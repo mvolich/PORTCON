@@ -259,10 +259,11 @@ def create_heatmap(combined_df):
     
     # Define explicitly custom diverging colorscale (negative=red, positive=green)
     custom_colorscale = [
-        [0.0, "#8B0000"],    # Dark red for strong negative
-        [0.25, "#DC143C"],   # Crimson for moderate negative
+        [0.0, "#660000"],    # Very dark red for strong negative
+        [0.1, "#8B0000"],    # Dark red for moderate negative
+        [0.2, "#B22222"],    # Fire brick for light negative
         [0.5, "white"],      # Neutral
-        [0.75, "#228B22"],   # Forest green for moderate positive
+        [0.8, "#228B22"],    # Forest green for moderate positive
         [1.0, "#006400"]     # Dark green for strong positive
     ]
     
