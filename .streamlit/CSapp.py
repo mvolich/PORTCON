@@ -198,15 +198,72 @@ def create_summary_table(combined_df):
     
     return summary_df
 
-def create_heatmap(summary_df):
-    """Create heatmap visualization with positive=green, negative=red"""
+def create_heatmap(combined_df):
+    """Create heatmap visualization with date range selection and positive=green, negative=red"""
+    # Add date range selector
+    min_date = combined_df['Date'].min()
+    max_date = combined_df['Date'].max()
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        start_date = st.date_input("Heatmap Start Date", value=min_date, min_value=min_date, max_value=max_date, key="heatmap_start")
+    with col2:
+        end_date = st.date_input("Heatmap End Date", value=max_date, min_value=min_date, max_value=max_date, key="heatmap_end")
+    
+    # Filter data for heatmap
+    filtered_df = combined_df[
+        (combined_df['Date'] >= pd.Timestamp(start_date)) &
+        (combined_df['Date'] <= pd.Timestamp(end_date))
+    ]
+    
+    # Create summary table from filtered data
+    filtered_df['Spread Category'] = filtered_df['Spread'].apply(categorize_spread)
+    
+    summary_list = []
+    category_order = ['<100', '100-150', '150-200', '200-250', '250-300', '300-400', '400-600', '600-800', '800+']
+
+    for cat in filtered_df['Category'].unique():
+        for spread_cat in category_order:
+            subset = filtered_df[
+                (filtered_df['Category'] == cat) &
+                (filtered_df['Spread Category'] == spread_cat)
+            ]['1 Yr Ahead ER']
+
+            if len(subset) > 1:
+                stats = DescrStatsW(subset)
+                mean = stats.mean
+                ci_low, ci_high = stats.tconfint_mean(alpha=0.05)
+                count = len(subset)
+
+                summary_list.append({
+                    'Category': cat,
+                    'Spread Category': spread_cat,
+                    'CI Lower': round(ci_low, 2),
+                    'Mean': round(mean, 2),
+                    'CI Upper': round(ci_high, 2),
+                    'N': count
+                })
+
+    summary_df = pd.DataFrame(summary_list)
+    
+    # Sort to match desired format
+    summary_df['Spread Category'] = pd.Categorical(
+        summary_df['Spread Category'],
+        categories=category_order,
+        ordered=True
+    )
+    summary_df.sort_values(by=['Category', 'Spread Category'], inplace=True)
+    
+    # Create pivot table for heatmap
     pivot_df = summary_df.pivot(index="Category", columns="Spread Category", values="Mean")
     
     # Define explicitly custom diverging colorscale (negative=red, positive=green)
     custom_colorscale = [
-        [0.0, "darkred"],    # Strong negative
+        [0.0, "#8B0000"],    # Dark red for strong negative
+        [0.25, "#DC143C"],   # Crimson for moderate negative
         [0.5, "white"],      # Neutral
-        [1.0, "darkgreen"]   # Strong positive
+        [0.75, "#228B22"],   # Forest green for moderate positive
+        [1.0, "#006400"]     # Dark green for strong positive
     ]
     
     # Plot heatmap explicitly with custom colorscale
@@ -214,14 +271,14 @@ def create_heatmap(summary_df):
         pivot_df,
         text_auto=True,
         aspect="auto",
-        title="Heatmap of Mean Excess Return by Spread Category and Asset Class",
+        title=f"Heatmap of Mean Excess Return by Spread Category and Asset Class ({start_date} to {end_date})",
         labels=dict(x="Spread Category", y="Asset Class", color="Mean Excess Return (%)"),
         color_continuous_scale=custom_colorscale,
         color_continuous_midpoint=0
     )
     
     fig.update_layout(height=600)
-    return fig, pivot_df
+    return fig, pivot_df, summary_df
 
 def value_to_color(val, vmin=-20, vmax=30):
     """Map a value to a color on the custom diverging scale (red-white-green)."""
@@ -380,8 +437,7 @@ if uploaded_file is not None:
         
         with tab3:
             st.subheader("Heatmap Analysis")
-            summary_df = create_summary_table(combined_df)
-            fig_heatmap, pivot_df = create_heatmap(summary_df)
+            fig_heatmap, pivot_df, heatmap_summary_df = create_heatmap(combined_df)
             st.plotly_chart(fig_heatmap, use_container_width=True)
             
             # Download button for heatmap data
