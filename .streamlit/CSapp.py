@@ -227,12 +227,26 @@ def value_to_color(val, vmin=-20, vmax=30):
     """Map a value to a color on the custom diverging scale (red-white-green)."""
     # Clamp value
     val = max(min(val, vmax), vmin)
-    # Normalize to 0-1
-    norm = (val - vmin) / (vmax - vmin)
-    # Custom scale: darkred (0), white (0.5), darkgreen (1)
-    from matplotlib.colors import LinearSegmentedColormap, to_hex
-    cmap = LinearSegmentedColormap.from_list("custom", ["darkred", "white", "darkgreen"])
-    return to_hex(cmap(norm))
+    
+    # Define color stops for the diverging scale
+    if val <= 0:
+        # Negative values: red to white
+        intensity = abs(val) / abs(vmin) if vmin != 0 else 0
+        intensity = min(intensity, 1.0)
+        # Interpolate from white (0) to darkred (1)
+        red = 1.0
+        green = 1.0 - intensity * 0.8  # Keep some green for lighter reds
+        blue = 1.0 - intensity * 0.8
+    else:
+        # Positive values: white to green
+        intensity = val / vmax if vmax != 0 else 0
+        intensity = min(intensity, 1.0)
+        # Interpolate from white (0) to darkgreen (1)
+        red = 1.0 - intensity * 0.8
+        green = 1.0
+        blue = 1.0 - intensity * 0.8
+    
+    return f'rgb({int(red*255)}, {int(green*255)}, {int(blue*255)})'
 
 def create_violin_plot(combined_df):
     """Create violin plot with date range selector and diverging color scale."""
@@ -263,15 +277,13 @@ def create_violin_plot(combined_df):
     if selected_category != 'All':
         filtered_df = filtered_df[filtered_df['Category'] == selected_category]
     
-    # Create violin plot with diverging colors
+    # Create violin plot with vertical color transitions
     fig = go.Figure()
     
     for spread_cat in spread_order:
         spread_data = filtered_df[filtered_df['Spread Category'] == spread_cat]['1 Yr Ahead ER']
         
         if not spread_data.empty:
-            mean_value = spread_data.mean()
-            color = value_to_color(mean_value)  # Use diverging color scale
             fig.add_trace(go.Violin(
                 y=spread_data,
                 x=[spread_cat] * len(spread_data),
@@ -281,9 +293,12 @@ def create_violin_plot(combined_df):
                 spanmode='hard',
                 legendgroup=spread_cat,
                 scalegroup=spread_cat,
-                line=dict(color=color),
-                fillcolor=color,
-                opacity=0.3
+                line=dict(color='black'),
+                fillcolor='rgba(255,255,255,0.1)',  # Very transparent white
+                opacity=0.3,
+                # Map colors based on y values for vertical transitions
+                color=spread_data,
+                coloraxis="coloraxis"
             ))
     
     fig.update_layout(
@@ -300,7 +315,14 @@ def create_violin_plot(combined_df):
             zerolinecolor='black'
         ),
         violingap=0.1,
-        height=600
+        height=600,
+        # Set up color scale for vertical transitions
+        coloraxis=dict(
+            colorscale='RdYlGn',  # Red-Yellow-Green diverging scale
+            colorbar=dict(title="Excess Return (%)"),
+            cmin=-20,
+            cmax=30
+        )
     )
     
     return fig
