@@ -199,17 +199,24 @@ def create_summary_table(combined_df):
     return summary_df
 
 def create_heatmap(summary_df):
-    """Create heatmap visualization"""
+    """Create heatmap visualization with positive=green, negative=red"""
     pivot_df = summary_df.pivot(index="Category", columns="Spread Category", values="Mean")
     
-    # Create heatmap using plotly
+    # Define explicitly custom diverging colorscale (negative=red, positive=green)
+    custom_colorscale = [
+        [0.0, "darkred"],    # Strong negative
+        [0.5, "white"],      # Neutral
+        [1.0, "darkgreen"]   # Strong positive
+    ]
+    
+    # Plot heatmap explicitly with custom colorscale
     fig = px.imshow(
         pivot_df,
         text_auto=True,
         aspect="auto",
         title="Heatmap of Mean Excess Return by Spread Category and Asset Class",
         labels=dict(x="Spread Category", y="Asset Class", color="Mean Excess Return (%)"),
-        color_continuous_scale="RdBu_r",
+        color_continuous_scale=custom_colorscale,
         color_continuous_midpoint=0
     )
     
@@ -245,13 +252,17 @@ def create_violin_plot(combined_df):
     if selected_category != 'All':
         filtered_df = filtered_df[filtered_df['Category'] == selected_category]
     
-    # Create violin plot
+    # Create violin plot with custom colors
     fig = go.Figure()
     
     for spread_cat in spread_order:
         spread_data = filtered_df[filtered_df['Spread Category'] == spread_cat]['1 Yr Ahead ER']
         
         if not spread_data.empty:
+            # Calculate mean to determine color (positive = green, negative = red)
+            mean_value = spread_data.mean()
+            color = '#2E8B57' if mean_value >= 0 else '#DC143C'  # Green for positive, Red for negative
+            
             fig.add_trace(go.Violin(
                 y=spread_data,
                 x=[spread_cat] * len(spread_data),
@@ -260,7 +271,10 @@ def create_violin_plot(combined_df):
                 meanline_visible=True,
                 spanmode='hard',
                 legendgroup=spread_cat,
-                scalegroup=spread_cat
+                scalegroup=spread_cat,
+                line=dict(color=color),
+                fillcolor=color,
+                opacity=0.7
             ))
     
     fig.update_layout(
