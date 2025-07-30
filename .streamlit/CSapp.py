@@ -284,6 +284,21 @@ def create_violin_plot(combined_df):
         spread_data = filtered_df[filtered_df['Spread Category'] == spread_cat]['1 Yr Ahead ER']
         
         if not spread_data.empty:
+            # Calculate mean for overall violin color
+            mean_value = spread_data.mean()
+            
+            # Create color gradient based on mean value
+            if mean_value <= 0:
+                # Negative mean: red gradient
+                intensity = abs(mean_value) / 20  # Normalize to max negative
+                intensity = min(intensity, 1.0)
+                color = f'rgba(255, {int(255*(1-intensity))}, {int(255*(1-intensity))}, 0.3)'
+            else:
+                # Positive mean: green gradient
+                intensity = mean_value / 30  # Normalize to max positive
+                intensity = min(intensity, 1.0)
+                color = f'rgba({int(255*(1-intensity))}, 255, {int(255*(1-intensity))}, 0.3)'
+            
             fig.add_trace(go.Violin(
                 y=spread_data,
                 x=[spread_cat] * len(spread_data),
@@ -294,11 +309,8 @@ def create_violin_plot(combined_df):
                 legendgroup=spread_cat,
                 scalegroup=spread_cat,
                 line=dict(color='black'),
-                fillcolor='rgba(255,255,255,0.1)',  # Very transparent white
-                opacity=0.3,
-                # Map colors based on y values for vertical transitions
-                color=spread_data,
-                coloraxis="coloraxis"
+                fillcolor=color,
+                opacity=0.3
             ))
     
     fig.update_layout(
@@ -315,14 +327,7 @@ def create_violin_plot(combined_df):
             zerolinecolor='black'
         ),
         violingap=0.1,
-        height=600,
-        # Set up color scale for vertical transitions
-        coloraxis=dict(
-            colorscale='RdYlGn',  # Red-Yellow-Green diverging scale
-            colorbar=dict(title="Excess Return (%)"),
-            cmin=-20,
-            cmax=30
-        )
+        height=600
     )
     
     return fig
