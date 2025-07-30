@@ -223,8 +223,19 @@ def create_heatmap(summary_df):
     fig.update_layout(height=600)
     return fig, pivot_df
 
+def value_to_color(val, vmin=-20, vmax=30):
+    """Map a value to a color on the custom diverging scale (red-white-green)."""
+    # Clamp value
+    val = max(min(val, vmax), vmin)
+    # Normalize to 0-1
+    norm = (val - vmin) / (vmax - vmin)
+    # Custom scale: darkred (0), white (0.5), darkgreen (1)
+    from matplotlib.colors import LinearSegmentedColormap, to_hex
+    cmap = LinearSegmentedColormap.from_list("custom", ["darkred", "white", "darkgreen"])
+    return to_hex(cmap(norm))
+
 def create_violin_plot(combined_df):
-    """Create violin plot with date range selector"""
+    """Create violin plot with date range selector and diverging color scale."""
     combined_df['Spread Category'] = combined_df['Spread'].apply(categorize_spread)
     
     spread_order = ['<100', '100-150', '150-200', '200-250',
@@ -252,17 +263,15 @@ def create_violin_plot(combined_df):
     if selected_category != 'All':
         filtered_df = filtered_df[filtered_df['Category'] == selected_category]
     
-    # Create violin plot with custom colors
+    # Create violin plot with diverging colors
     fig = go.Figure()
     
     for spread_cat in spread_order:
         spread_data = filtered_df[filtered_df['Spread Category'] == spread_cat]['1 Yr Ahead ER']
         
         if not spread_data.empty:
-            # Calculate mean to determine color (positive = green, negative = red)
             mean_value = spread_data.mean()
-            color = '#2E8B57' if mean_value >= 0 else '#DC143C'  # Green for positive, Red for negative
-            
+            color = value_to_color(mean_value)  # Use diverging color scale
             fig.add_trace(go.Violin(
                 y=spread_data,
                 x=[spread_cat] * len(spread_data),
@@ -274,7 +283,7 @@ def create_violin_plot(combined_df):
                 scalegroup=spread_cat,
                 line=dict(color=color),
                 fillcolor=color,
-                opacity=0.7
+                opacity=0.3
             ))
     
     fig.update_layout(
@@ -284,7 +293,12 @@ def create_violin_plot(combined_df):
             categoryorder="array",
             categoryarray=spread_order
         ),
-        yaxis_title="Excess Return (%)",
+        yaxis=dict(
+            title="Excess Return (%)",
+            zeroline=True,
+            zerolinewidth=3,
+            zerolinecolor='black'
+        ),
         violingap=0.1,
         height=600
     )
