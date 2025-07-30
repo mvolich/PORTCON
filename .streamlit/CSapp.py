@@ -12,12 +12,12 @@ import io
 # Page configuration
 st.set_page_config(
     page_title="Spreads & 12 Month Returns Analysis",
-    page_icon="📊",
+    page_icon="",
     layout="wide"
 )
 
 # Title and description
-st.title("📊 Spreads & 12 Month Returns Analysis")
+st.title("Spreads & 12 Month Returns Analysis")
 st.markdown("Upload your Excel file to analyze excess returns by spread categories and fixed income categories.")
 
 # File upload
@@ -297,10 +297,10 @@ if uploaded_file is not None:
     combined_df = load_and_process_data(uploaded_file)
     
     if combined_df is not None:
-        st.success(f"✅ Data loaded successfully! Shape: {combined_df.shape}")
+        st.success(f"Data loaded successfully! Shape: {combined_df.shape}")
         
         # Display basic info
-        st.subheader("📋 Data Overview")
+        st.subheader("Data Overview")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Total Observations", len(combined_df))
@@ -311,11 +311,11 @@ if uploaded_file is not None:
         
         # Create tabs for different visualizations
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
-            "📈 Confidence Intervals", 
-            "📊 Summary Table", 
-            "🔥 Heatmap", 
-            "🎻 Violin Plot",
-            "📥 Download Data"
+            "Confidence Intervals", 
+            "Summary Table", 
+            "Heatmap", 
+            "Violin Plot",
+            "Download Data"
         ])
         
         with tab1:
@@ -331,7 +331,7 @@ if uploaded_file is not None:
             # Download button for summary
             csv = summary_df.to_csv(index=False)
             st.download_button(
-                label="📥 Download Summary as CSV",
+                label="Download Summary as CSV",
                 data=csv,
                 file_name="spread_summary.csv",
                 mime="text/csv"
@@ -346,7 +346,7 @@ if uploaded_file is not None:
             # Download button for heatmap data
             csv_heatmap = pivot_df.to_csv()
             st.download_button(
-                label="📥 Download Heatmap Data as CSV",
+                label="Download Heatmap Data as CSV",
                 data=csv_heatmap,
                 file_name="heatmap_data.csv",
                 mime="text/csv"
@@ -363,7 +363,7 @@ if uploaded_file is not None:
             # Download original processed data
             csv_processed = combined_df.to_csv(index=False)
             st.download_button(
-                label="📥 Download Processed Data as CSV",
+                label="Download Processed Data as CSV",
                 data=csv_processed,
                 file_name="processed_data.csv",
                 mime="text/csv"
@@ -380,24 +380,24 @@ if uploaded_file is not None:
             
             output.seek(0)
             st.download_button(
-                label="📥 Download All Data as Excel",
+                label="Download All Data as Excel",
                 data=output.getvalue(),
                 file_name="spreads_analysis.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
 else:
-    st.info("👆 Please upload an Excel file to begin the analysis.")
+    st.info("Please upload an Excel file to begin the analysis.")
     
     # Instructions
     st.markdown("""
-    ### 📋 Instructions:
+    ### Instructions:
     1. **File Format**: Upload an Excel file (.xlsx or .xls)
     2. **Sheet Name**: The file should contain a sheet named 'Excess Return'
     3. **Data Structure**: Data should be organized in columns of 3 (Date, Spread, 1 Yr Ahead ER) for each category
     4. **Spread Format**: Spreads should be in decimal format (e.g., 0.015 for 150 bps)
     
-    ### 📊 What you'll get:
+    ### What you'll get:
     - **Confidence Interval Plot**: Interactive visualization of mean returns with 95% confidence intervals
     - **Summary Table**: Statistical summary by category and spread level
     - **Heatmap**: Visual representation of mean returns across categories
