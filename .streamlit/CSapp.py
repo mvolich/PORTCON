@@ -462,10 +462,25 @@ if uploaded_file is not None:
             # User explicitly selects reference sub-asset class
             reference_class = st.selectbox("Select Reference Sub-Asset Class", combined_df['Category'].unique())
 
+            # Get the spread range for the selected reference class
+            ref_class_data = combined_df[combined_df['Category'] == reference_class]
+            min_spread_pct = ref_class_data['Spread'].min() * 100
+            max_spread_pct = ref_class_data['Spread'].max() * 100
+            
+            # Display the valid range for the selected class
+            st.info(f"**{reference_class}** spread range: {min_spread_pct:.1f}% to {max_spread_pct:.1f}%")
+
             # User explicitly inputs spread rounded to one decimal place
-            input_spread = st.number_input("Enter Spread Level (%) - 1 Decimal Place", min_value=0.0, max_value=20.0, value=2.5, step=0.1)
+            input_spread = st.number_input(
+                "Enter Spread Level (%) - 1 Decimal Place", 
+                min_value=float(min_spread_pct), 
+                max_value=float(max_spread_pct), 
+                value=float(min_spread_pct + (max_spread_pct - min_spread_pct) / 2), 
+                step=0.1
+            )
 
             # Define explicit spread range (e.g., 2.5% -> 2.500000% to 2.599999%)
+            # Convert percentage to decimal for comparison with data
             lower_bound = input_spread / 100
             upper_bound = (input_spread + 0.099999) / 100
 
@@ -477,6 +492,9 @@ if uploaded_file is not None:
             # Check if there are matching records
             if ref_dates.empty:
                 st.warning(f"No historical data found for {reference_class} at the entered spread level of {input_spread:.1f}%")
+                st.write(f"Available spread levels for {reference_class}:")
+                available_spreads = sorted(ref_class_data['Spread'].unique() * 100)
+                st.write(f"Min: {available_spreads[0]:.1f}%, Max: {available_spreads[-1]:.1f}%")
             else:
                 # Get explicitly corresponding data for all sub-asset classes on these dates
                 filtered_df = combined_df[combined_df['Date'].isin(ref_dates)]
