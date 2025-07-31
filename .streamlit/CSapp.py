@@ -414,10 +414,10 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
             threshold_bin = safe_bins.iloc[0]  # first bin from tightest upward
             results.append({
                 'Category': category,
-                'Min_Safe_Spread_Bin': threshold_bin['Spread Bin'],
-                'Avg_Return_at_Threshold': threshold_bin['avg_return'],
-                'Percent_Historical_Negative_Returns': threshold_bin['percent_negative'],
-                'Volatility_at_Threshold': threshold_bin['std_return'],
+                'Min_Safe_Spread_Bps': threshold_bin['Spread Bin'] * 100,  # Convert to basis points
+                'Avg_Return_Pct': threshold_bin['avg_return'] * 100,  # Convert to percentage
+                'Percent_Historical_Negative_Returns': threshold_bin['percent_negative'] * 100,  # Convert to percentage
+                'Volatility_Pct': threshold_bin['std_return'] * 100,  # Convert to percentage
                 'Observations': threshold_bin['observations']
             })
 
@@ -743,10 +743,10 @@ if uploaded_file is not None:
                     st.markdown("""
                     **Column Descriptions:**
                     - **Category**: The sub-asset class or investment category
-                    - **Min_Safe_Spread_Bin**: The minimum spread level (in decimal) where the probability of negative returns is below the threshold
-                    - **Avg_Return_at_Threshold**: The average 1-year excess return at the minimum safe spread level
+                    - **Min_Safe_Spread_Bps**: The minimum spread level (in basis points) where the probability of negative returns is below the threshold
+                    - **Avg_Return_Pct**: The average 1-year excess return (in percentage) at the minimum safe spread level
                     - **Percent_Historical_Negative_Returns**: The percentage of historical returns that were negative at the minimum safe spread threshold
-                    - **Volatility_at_Threshold**: The standard deviation of returns at the minimum safe spread level
+                    - **Volatility_Pct**: The standard deviation of returns (in percentage) at the minimum safe spread level
                     - **Observations**: The number of historical observations used to calculate the statistics for this category
                     """)
                     
