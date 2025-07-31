@@ -384,6 +384,33 @@ def value_to_color(val, vmin=-20, vmax=30):
     
     return f'rgb({int(red*255)}, {int(green*255)}, {int(blue*255)})'
 
+def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
+    """Calculate minimum safe spread thresholds for each category."""
+    # Create granular spread bins (increments of 10 bps or 0.1%)
+    spread_bin_size = 0.1
+    combined_df['Spread Bin'] = (np.floor(combined_df['Spread'] / spread_bin_size) * spread_bin_size).round(1)
+
+    # Group and calculate statistics
+    grouped_stats = combined_df.groupby(['Category', 'Spread Bin']).agg(
+        avg_return=('1 Yr Ahead ER', 'mean'),
+        std_return=('1 Yr Ahead ER', 'std'),
+        prob_negative=('1 Yr Ahead ER', lambda x: (x < 0).mean()),
+        observations=('1 Yr Ahead ER', 'count')
+    ).reset_index()
+
+    # Apply minimum observations filter
+    reliable_bins = grouped_stats[grouped_stats['observations'] >= min_obs]
+
+    # Determine minimum safe spread thresholds
+    min_safe_spreads = reliable_bins[reliable_bins['prob_negative'] <= safety_threshold].groupby('Category').agg(
+        Min_Safe_Spread_Bin=('Spread Bin', 'min'),
+        Avg_Return_at_Threshold=('avg_return', 'first'),
+        Negative_Return_Probability=('prob_negative', 'first'),
+        Volatility_at_Threshold=('std_return', 'first')
+    ).reset_index()
+
+    return min_safe_spreads
+
 def create_violin_plot(combined_df):
     """Create violin plot with date range selector and diverging color scale."""
     combined_df['Spread Category'] = combined_df['Spread'].apply(categorize_spread)
@@ -489,11 +516,12 @@ if uploaded_file is not None:
             st.metric("Date Range", f"{combined_df['Date'].min().strftime('%Y-%m-%d')} to {combined_df['Date'].max().strftime('%Y-%m-%d')}")
         
         # Create tabs for different visualizations
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "Heatmap", 
             "Average Returns by Spread",
             "Violin Plot",
             "Summary Table", 
+            "Minimum Safe Spreads",
             "Download Data"
         ])
         
@@ -662,6 +690,37 @@ if uploaded_file is not None:
                 file_name="spreads_analysis.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+        
+        with tab6:
+            st.subheader("Minimum Safe Spread Thresholds")
+
+            # Allow user to adjust safety threshold and minimum observations interactively
+            safety_threshold = st.slider(
+                "Negative Return Probability Threshold (%)",
+                min_value=0.0, max_value=20.0, value=5.0, step=0.1
+            ) / 100  # convert to decimal
+
+            min_obs = st.number_input(
+                "Minimum Number of Observations per Bin",
+                min_value=1, max_value=50, value=10, step=1
+            )
+
+            # Calculate Minimum Safe Spread Thresholds
+            min_safe_spreads_df = calculate_min_safe_spreads(
+                combined_df, safety_threshold=safety_threshold, min_obs=min_obs
+            )
+
+            # Display results
+            st.dataframe(min_safe_spreads_df, use_container_width=True)
+
+            # Optional: Add download button for this data
+            csv_safe_spreads = min_safe_spreads_df.to_csv(index=False)
+            st.download_button(
+                label="Download Minimum Safe Spread Thresholds as CSV",
+                data=csv_safe_spreads,
+                file_name="minimum_safe_spreads.csv",
+                mime="text/csv"
+            )
 
 else:
     st.info("Please upload an Excel file to begin the analysis.")
@@ -679,6 +738,7 @@ else:
     - **Average Returns by Spread**: Analysis of cross-asset performance at specific spread levels
     - **Violin Plot**: Distribution analysis with date range selection
     - **Summary Table**: Statistical summary by category and spread level
+    - **Minimum Safe Spreads**: Calculate minimum spread thresholds for desired safety levels
     - **Download Options**: Export results in CSV or Excel format
     """)
 
