@@ -706,11 +706,12 @@ if uploaded_file is not None:
         with tab5:
             st.subheader("Minimum Safe Spread Thresholds")
 
-            # Allow user to adjust safety threshold and minimum observations interactively
-            st.markdown("**Negative Return Probability Threshold (%)**")
-            st.markdown("Set your acceptable level of risk by choosing the maximum percentage of historical returns allowed to be negative within each spread range. For example, choosing 0% means selecting only spread levels that have historically never experienced negative returns—though this does not guarantee future results.")
+            # Improved Slider Label and Description
+            st.markdown("### Maximum Acceptable % of Negative Returns (Risk Tolerance)")
+            st.markdown("Select the highest historical probability of negative returns you're comfortable accepting. Lower thresholds (e.g., 0%) are conservative, indicating spreads that historically never experienced negative returns. Higher thresholds (e.g., 10-20%) mean you accept greater historical risk.")
+
             safety_threshold = st.slider(
-                "Select Threshold (%)",
+                "Risk Tolerance (%)",
                 min_value=0.0, max_value=40.0, value=7.5, step=0.1
             ) / 100  # convert to decimal
 
@@ -725,36 +726,29 @@ if uploaded_file is not None:
                     combined_df, safety_threshold=safety_threshold, min_obs=min_obs
                 )
 
-                # Display results
+                # Rename columns clearly for user interpretability
+                min_safe_spreads_df.rename(columns={
+                    'Min_Safe_Spread_Bps': 'Spread Threshold (bps)',
+                    'Avg_Return_Pct': 'Avg 1Y Return (%)',
+                    'Percent_Historical_Negative_Returns': 'Historical % of Negative Returns',
+                    'Volatility_Pct': 'Return Volatility (%)',
+                    'Observations': '# Observations'
+                }, inplace=True)
+
+                # Display results with intuitive explanations
                 if len(min_safe_spreads_df) > 0:
                     st.success(f"Found minimum safe spreads for {len(min_safe_spreads_df)} categories")
-                    
-                    # Display calculation methodology
-                    st.info(f"""
-                    **Calculation Methodology:**
-                    - Grouped historical data into spread bins of 25 basis points (0.0025 in decimal)
-                    - For each category and spread bin, calculated the probability of negative 1-year returns
-                    - Identified the minimum spread level where negative return probability ≤ {safety_threshold*100:.1f}%
-                    - Only included bins with at least {min_obs} observations to ensure statistical reliability
-                    - This shows the minimum spread threshold needed for each asset class to achieve the desired safety level
+
+                    st.info("""
+                    ### How to Interpret This Table:
+                    For your selected risk tolerance (e.g., **7% negative returns**), the table shows the **tightest (lowest) spread** historically required to meet or better this risk level.
+
+                    - **Spreads below the threshold** historically resulted in a higher percentage of negative returns than your chosen tolerance.
+                    - **Spreads at or above the threshold** historically aligned with your acceptable risk.
                     """)
-                    
-                    # Add descriptions for each column
-                    st.markdown("""
-                    **Column Descriptions:**
-                    - **Category**: The sub-asset class or investment category
-                    - **Min_Safe_Spread_Bps**: The minimum spread level (in basis points) where the probability of negative returns is below the threshold
-                    - **Avg_Return_Pct**: The average 1-year excess return (in percentage) at the minimum safe spread level
-                    - **Percent_Historical_Negative_Returns**: The percentage of historical returns that were negative at the minimum safe spread threshold
-                    - **Volatility_Pct**: The standard deviation of returns (in percentage) at the minimum safe spread level
-                    - **Observations**: The number of historical observations used to calculate the statistics for this category
-                    """)
-                    
-                    # Observations column is already included in the dataframe from the calculation
-                    
+
                     st.dataframe(min_safe_spreads_df, use_container_width=True)
-                    
-                    # Optional: Add download button for this data
+
                     csv_safe_spreads = min_safe_spreads_df.to_csv(index=False)
                     st.download_button(
                         label="Download Minimum Safe Spread Thresholds as CSV",
@@ -763,37 +757,16 @@ if uploaded_file is not None:
                         mime="text/csv"
                     )
                 else:
-                    st.warning("No categories found that meet the current safety threshold and minimum observations criteria. Try reducing the safety threshold or minimum observations.")
-                    
-                    # Show some debug info to help understand why
-                    st.write("Debug: Let's check what's happening...")
-                    
-                    # Test the function step by step
-                    df = combined_df.copy()
-                    spread_bin_size = 0.01
-                    df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(3)
-                    
-                    st.write(f"Debug: Created {df['Spread Bin'].nunique()} unique spread bins")
-                    st.write(f"Debug: Spread bin range: {df['Spread Bin'].min():.3f} to {df['Spread Bin'].max():.3f}")
-                    
-                    grouped_stats = df.groupby(['Category', 'Spread Bin']).agg(
-                        avg_return=('1 Yr Ahead ER', 'mean'),
-                        std_return=('1 Yr Ahead ER', 'std'),
-                        prob_negative=('1 Yr Ahead ER', lambda x: (x < 0).mean()),
-                        observations=('1 Yr Ahead ER', 'count')
-                    ).reset_index()
-                    
-                    st.write(f"Debug: Grouped stats has {len(grouped_stats)} rows")
-                    
-                    reliable_bins = grouped_stats[grouped_stats['observations'] >= min_obs]
-                    st.write(f"Debug: After min obs filter: {len(reliable_bins)} rows")
-                    
-                    safe_bins = reliable_bins[reliable_bins['prob_negative'] <= safety_threshold]
-                    st.write(f"Debug: After safety threshold filter: {len(safe_bins)} rows")
-                    
-                    if len(safe_bins) > 0:
-                        st.write("Debug: Sample of safe bins:")
-                        st.dataframe(safe_bins.head(10))
+                    st.warning("No categories found meeting your risk tolerance. Consider increasing your threshold or reducing the minimum observations.")
+
+                # Simplified Calculation Methodology
+                st.info(f"""
+                ### Calculation Methodology:
+                - Grouped historical credit spreads into intervals of 25 basis points (bps).
+                - Calculated the percentage of negative 1-year returns historically observed for each bin.
+                - For each category, identified the **lowest spread** where historical negative returns meet or fall below your selected risk tolerance ({safety_threshold*100:.1f}%).
+                - Only considered spread bins with at least {min_obs} observations.
+                """)
                     
             except Exception as e:
                 st.error(f"Error calculating minimum safe spreads: {str(e)}")
