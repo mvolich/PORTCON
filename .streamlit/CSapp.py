@@ -464,25 +464,25 @@ if uploaded_file is not None:
 
             # Get the spread range for the selected reference class
             ref_class_data = combined_df[combined_df['Category'] == reference_class]
-            min_spread_pct = ref_class_data['Spread'].min() * 100
-            max_spread_pct = ref_class_data['Spread'].max() * 100
+            min_spread_bps = ref_class_data['Spread'].min() * 10000  # Convert to basis points
+            max_spread_bps = ref_class_data['Spread'].max() * 10000  # Convert to basis points
             
-            # Display the valid range for the selected class
-            st.info(f"**{reference_class}** spread range: {min_spread_pct:.1f}% to {max_spread_pct:.1f}%")
+            # Display the valid range for the selected class in basis points
+            st.info(f"**{reference_class}** spread range: {min_spread_bps:.0f} to {max_spread_bps:.0f} basis points")
 
-            # User explicitly inputs spread rounded to one decimal place
-            input_spread = st.number_input(
-                "Enter Spread Level (%) - 1 Decimal Place", 
-                min_value=float(min_spread_pct), 
-                max_value=float(max_spread_pct), 
-                value=float(min_spread_pct + (max_spread_pct - min_spread_pct) / 2), 
-                step=0.1
+            # User inputs spread in basis points (whole numbers only)
+            input_spread_bps = st.number_input(
+                "Enter Spread Level (basis points) - Whole Numbers Only", 
+                min_value=int(min_spread_bps), 
+                max_value=int(max_spread_bps), 
+                value=int(min_spread_bps + (max_spread_bps - min_spread_bps) / 2), 
+                step=1
             )
 
-            # Define explicit spread range (e.g., 2.5% -> 2.500000% to 2.599999%)
-            # Convert percentage to decimal for comparison with data
-            lower_bound = input_spread / 100
-            upper_bound = (input_spread + 0.099999) / 100
+            # Define explicit spread range (e.g., 100 bps -> 0.0100 to 0.0199)
+            # Convert basis points to decimal for comparison with data
+            lower_bound = input_spread_bps / 10000
+            upper_bound = (input_spread_bps + 99) / 10000
 
             # Find dates explicitly where the reference class spread is within the chosen range
             ref_dates = combined_df[(combined_df['Category'] == reference_class) &
@@ -491,10 +491,10 @@ if uploaded_file is not None:
 
             # Check if there are matching records
             if ref_dates.empty:
-                st.warning(f"No historical data found for {reference_class} at the entered spread level of {input_spread:.1f}%")
+                st.warning(f"No historical data found for {reference_class} at the entered spread level of {input_spread_bps} basis points")
                 st.write(f"Available spread levels for {reference_class}:")
-                available_spreads = sorted(ref_class_data['Spread'].unique() * 100)
-                st.write(f"Min: {available_spreads[0]:.1f}%, Max: {available_spreads[-1]:.1f}%")
+                available_spreads = sorted(ref_class_data['Spread'].unique() * 10000)
+                st.write(f"Min: {available_spreads[0]:.0f}, Max: {available_spreads[-1]:.0f} basis points")
             else:
                 # Get explicitly corresponding data for all sub-asset classes on these dates
                 filtered_df = combined_df[combined_df['Date'].isin(ref_dates)]
@@ -504,7 +504,7 @@ if uploaded_file is not None:
                 stats_df.columns = ['Sub-Asset Class', 'Average Excess Return (%)', 'Std Deviation', 'Max Return', 'Min Return', 'Observations']
 
                 # Explicitly display results
-                st.subheader(f"Excess Returns Statistics when {reference_class} Spread ≈ {input_spread:.1f}%")
+                st.subheader(f"Excess Returns Statistics when {reference_class} Spread ≈ {input_spread_bps} basis points")
                 st.dataframe(stats_df.round(2), use_container_width=True)
 
                 # Optional bar chart explicitly for clear visual representation
