@@ -704,11 +704,10 @@ if uploaded_file is not None:
             )
         
         with tab5:
-            st.subheader("Minimum Safe Spread Thresholds")
 
             # Improved Slider Label and Description
-            st.markdown("### Maximum Acceptable % of Negative Returns (Risk Tolerance)")
-            st.markdown("Select the highest historical probability of negative returns you're comfortable accepting. Lower thresholds (e.g., 0%) are conservative, indicating spreads that historically never experienced negative returns. Higher thresholds (e.g., 10-20%) mean you accept greater historical risk.")
+            st.markdown("### Maximum Tolerance of Experiencing a Negative 1Y Return ###")
+            st.markdown("Select the highest historical probability of experiencing negative returns you're comfortable accepting. Lower thresholds (e.g., 0%) are conservative, indicating spreads that historically never experienced negative returns. Higher thresholds (e.g., 10-20%) mean you accept greater historical risk.")
 
             safety_threshold = st.slider(
                 "Risk Tolerance (%)",
@@ -739,12 +738,21 @@ if uploaded_file is not None:
                 if len(min_safe_spreads_df) > 0:
                     st.success(f"Found minimum safe spreads for {len(min_safe_spreads_df)} categories")
 
-                    st.info("""
+                    # Get an example row for demonstration
+                    example_row = min_safe_spreads_df.iloc[0]
+                    
+                    st.info(f"""
                     ### How to Interpret This Table:
-                    For your selected risk tolerance (e.g., **7% negative returns**), the table shows the **tightest (lowest) spread** historically required to meet or better this risk level.
+                    For your selected risk tolerance of **{safety_threshold*100:.1f}% negative returns**, the table shows the **tightest (lowest) spread** historically required to meet or better this risk level.
 
-                    - **Spreads below the threshold** historically resulted in a higher percentage of negative returns than your chosen tolerance.
-                    - **Spreads at or above the threshold** historically aligned with your acceptable risk.
+                    **Example: {example_row['Category']}**
+                    - **Spread Threshold: {example_row['Spread Threshold (bps)']:.1f} bps** - This is the minimum spread level where historical negative returns were ≤ {safety_threshold*100:.1f}%
+                    - **Historical % of Negative Returns: {example_row['Historical % of Negative Returns']:.1f}%** - At this spread level, {example_row['Historical % of Negative Returns']:.1f}% of historical returns were negative
+                    - **Avg 1Y Return: {example_row['Avg 1Y Return (%)']:.2f}%** - The average 1-year excess return when spreads were at this level
+                    - **Return Volatility: {example_row['Return Volatility (%)']:.2f}%** - The standard deviation of returns at this spread level
+                    - **# Observations: {example_row['# Observations']}** - Number of historical periods used to calculate these statistics
+
+                    **Key Insight:** Spreads below {example_row['Spread Threshold (bps)']:.1f} bps for {example_row['Category']} historically resulted in negative returns more than {safety_threshold*100:.1f}% of the time, exceeding your risk tolerance.
                     """)
 
                     st.dataframe(min_safe_spreads_df, use_container_width=True)
