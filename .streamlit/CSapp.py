@@ -19,9 +19,11 @@ st.set_page_config(
 # Add company logo to top right
 col1, col2, col3 = st.columns([2, 1, 1])
 with col1:
-    st.title("Spreads & 12 Month Returns Analysis")
+    st.title("Credit Spreads & 1Y Return Analysis")
 with col3:
-    st.image("https://rubricsam.com/wp-content/uploads/2021/01/cropped-rubrics-logo-tight.png", width=200)
+    st.markdown('<div style="text-align: right;">', unsafe_allow_html=True)
+    st.image("https://rubricsam.com/wp-content/uploads/2021/01/cropped-rubrics-logo-tight.png", width=250)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Apply company color scheme and font
 st.markdown("""
@@ -78,6 +80,10 @@ st.markdown("""
     
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Ringside', sans-serif !important;
+    }
+    
+    h1 {
+        color: #001E4F !important;
     }
     
     .stMarkdown {
@@ -350,7 +356,7 @@ def create_heatmap(combined_df):
         color_continuous_midpoint=0
     )
     
-    fig.update_layout(height=600)
+    fig.update_layout(height=900)
     return fig, pivot_df, summary_df
 
 def value_to_color(val, vmin=-20, vmax=30):
