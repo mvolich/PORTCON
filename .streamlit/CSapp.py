@@ -464,8 +464,8 @@ if uploaded_file is not None:
 
             # Get the spread range for the selected reference class
             ref_class_data = combined_df[combined_df['Category'] == reference_class]
-            min_spread_bps = ref_class_data['Spread'].min() * 10000  # Convert to basis points
-            max_spread_bps = ref_class_data['Spread'].max() * 10000  # Convert to basis points
+            min_spread_bps = ref_class_data['Spread'].min() * 100  # Convert decimal to basis points
+            max_spread_bps = ref_class_data['Spread'].max() * 100  # Convert decimal to basis points
             
             # Display the valid range for the selected class in basis points
             st.info(f"**{reference_class}** spread range: {min_spread_bps:.0f} to {max_spread_bps:.0f} basis points")
@@ -481,8 +481,8 @@ if uploaded_file is not None:
 
             # Define explicit spread range (e.g., 100 bps -> 0.0100 to 0.0199)
             # Convert basis points to decimal for comparison with data
-            lower_bound = input_spread_bps / 10000
-            upper_bound = (input_spread_bps + 99) / 10000
+            lower_bound = input_spread_bps / 100
+            upper_bound = (input_spread_bps + 99) / 100
 
             # Find dates explicitly where the reference class spread is within the chosen range
             ref_dates = combined_df[(combined_df['Category'] == reference_class) &
@@ -493,7 +493,7 @@ if uploaded_file is not None:
             if ref_dates.empty:
                 st.warning(f"No historical data found for {reference_class} at the entered spread level of {input_spread_bps} basis points")
                 st.write(f"Available spread levels for {reference_class}:")
-                available_spreads = sorted(ref_class_data['Spread'].unique() * 10000)
+                available_spreads = sorted(ref_class_data['Spread'].unique() * 100)
                 st.write(f"Min: {available_spreads[0]:.0f}, Max: {available_spreads[-1]:.0f} basis points")
             else:
                 # Get explicitly corresponding data for all sub-asset classes on these dates
