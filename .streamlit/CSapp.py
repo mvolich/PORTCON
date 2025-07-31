@@ -412,13 +412,17 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
 
         if not safe_bins.empty:
             threshold_bin = safe_bins.iloc[0]  # first bin from tightest upward
+            # Calculate negative return observations
+            negative_obs = int(threshold_bin['percent_negative'] * threshold_bin['observations'])
+            
             results.append({
                 'Category': category,
                 'Min_Safe_Spread_Bps': threshold_bin['Spread Bin'] * 100,  # Convert to basis points
-                'Avg_Return_Pct': threshold_bin['avg_return'] * 100,  # Convert to percentage
-                'Percent_Historical_Negative_Returns': threshold_bin['percent_negative'] * 100,  # Convert to percentage
-                'Volatility_Pct': threshold_bin['std_return'] * 100,  # Convert to percentage
-                'Observations': threshold_bin['observations']
+                'Avg_Return_Pct': threshold_bin['avg_return'],  # Already in percentage format
+                'Negative_Return_Observations': negative_obs,
+                'Total_Observations': threshold_bin['observations'],
+                'Historical_Negative_Rate': f"{negative_obs}/{threshold_bin['observations']}",
+                'Volatility_Pct': threshold_bin['std_return']  # Already in percentage format
             })
 
     return pd.DataFrame(results)
@@ -729,9 +733,10 @@ if uploaded_file is not None:
                 min_safe_spreads_df.rename(columns={
                     'Min_Safe_Spread_Bps': 'Spread Threshold (bps)',
                     'Avg_Return_Pct': 'Avg 1Y Return (%)',
-                    'Percent_Historical_Negative_Returns': 'Historical % of Negative Returns',
-                    'Volatility_Pct': 'Return Volatility (%)',
-                    'Observations': '# Observations'
+                    'Negative_Return_Observations': 'Negative Return Observations',
+                    'Total_Observations': 'Total Observations',
+                    'Historical_Negative_Rate': 'Historical % of Negative Returns',
+                    'Volatility_Pct': 'Return Volatility (%)'
                 }, inplace=True)
 
                 # Display results with intuitive explanations
@@ -747,10 +752,11 @@ if uploaded_file is not None:
 
                     **Example: {example_row['Category']}**
                     - **Spread Threshold: {example_row['Spread Threshold (bps)']:.1f} bps** - This is the minimum spread level where historical negative returns were ≤ {safety_threshold*100:.1f}%
-                    - **Historical % of Negative Returns: {example_row['Historical % of Negative Returns']:.1f}%** - At this spread level, {example_row['Historical % of Negative Returns']:.1f}% of historical returns were negative
+                    - **Historical % of Negative Returns: {example_row['Historical % of Negative Returns']}** - Shows the ratio of negative observations to total observations at this spread level
+                    - **Negative Return Observations: {example_row['Negative Return Observations']}** - Number of historical periods with negative returns at this spread level
+                    - **Total Observations: {example_row['Total Observations']}** - Total number of historical periods used to calculate these statistics
                     - **Avg 1Y Return: {example_row['Avg 1Y Return (%)']:.2f}%** - The average 1-year excess return when spreads were at this level
                     - **Return Volatility: {example_row['Return Volatility (%)']:.2f}%** - The standard deviation of returns at this spread level
-                    - **# Observations: {example_row['# Observations']}** - Number of historical periods used to calculate these statistics
 
                     **Key Insight:** Spreads below {example_row['Spread Threshold (bps)']:.1f} bps for {example_row['Category']} historically resulted in negative returns more than {safety_threshold*100:.1f}% of the time, exceeding your risk tolerance.
                     """)
