@@ -715,19 +715,54 @@ if uploaded_file is not None:
 
             # Calculate Minimum Safe Spread Thresholds
             try:
-                st.write("Debug: Starting calculation...")
-                st.write(f"Debug: Safety threshold = {safety_threshold:.3f}")
-                st.write(f"Debug: Min observations = {min_obs}")
-                
                 min_safe_spreads_df = calculate_min_safe_spreads(
                     combined_df, safety_threshold=safety_threshold, min_obs=min_obs
                 )
-                
-                st.write(f"Debug: Function returned dataframe with {len(min_safe_spreads_df)} rows")
 
                 # Display results
                 if len(min_safe_spreads_df) > 0:
                     st.success(f"Found minimum safe spreads for {len(min_safe_spreads_df)} categories")
+                    
+                    # Display calculation methodology
+                    st.info(f"""
+                    **Calculation Methodology:**
+                    - Grouped historical data into spread bins of 25 basis points (0.0025 in decimal)
+                    - For each category and spread bin, calculated the probability of negative 1-year returns
+                    - Identified the minimum spread level where negative return probability ≤ {safety_threshold*100:.1f}%
+                    - Only included bins with at least {min_obs} observations to ensure statistical reliability
+                    - This shows the minimum spread threshold needed for each asset class to achieve the desired safety level
+                    """)
+                    
+                    # Add descriptions for each column
+                    st.markdown("""
+                    **Column Descriptions:**
+                    - **Category**: The sub-asset class or investment category
+                    - **Min_Safe_Spread_Bin**: The minimum spread level (in decimal) where the probability of negative returns is below the threshold
+                    - **Avg_Return_at_Threshold**: The average 1-year excess return at the minimum safe spread level
+                    - **Negative_Return_Probability**: The probability of negative returns at the minimum safe spread threshold
+                    - **Volatility_at_Threshold**: The standard deviation of returns at the minimum safe spread level
+                    - **Observations**: The number of historical observations used to calculate the statistics for this category
+                    """)
+                    
+                    # Add observations column to the dataframe
+                    # We need to get the observations count from the calculation process
+                    df = combined_df.copy()
+                    spread_bin_size = 0.0025
+                    df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(3)
+                    
+                    # Get observations for each category at their minimum safe spread
+                    observations_data = []
+                    for _, row in min_safe_spreads_df.iterrows():
+                        category = row['Category']
+                        min_spread = row['Min_Safe_Spread_Bin']
+                        
+                        # Count observations for this category at this spread level
+                        obs_count = len(df[(df['Category'] == category) & (df['Spread Bin'] == min_spread)])
+                        observations_data.append(obs_count)
+                    
+                    # Add observations column
+                    min_safe_spreads_df['Observations'] = observations_data
+                    
                     st.dataframe(min_safe_spreads_df, use_container_width=True)
                     
                     # Optional: Add download button for this data
