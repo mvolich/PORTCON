@@ -17,11 +17,11 @@ st.set_page_config(
 )
 
 # Add company logo to top right
-col1, col2, col3 = st.columns([3, 1, 1])
+col1, col2, col3 = st.columns([2, 1, 1])
 with col1:
     st.title("Spreads & 12 Month Returns Analysis")
 with col3:
-    st.image("https://rubricsam.com/wp-content/uploads/2021/01/cropped-rubrics-logo-tight.png", width=150)
+    st.image("https://rubricsam.com/wp-content/uploads/2021/01/cropped-rubrics-logo-tight.png", width=200)
 
 # Apply company color scheme and font
 st.markdown("""
@@ -38,7 +38,8 @@ st.markdown("""
     }
     
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
+        gap: 12px;
+        justify-content: space-between;
     }
     .stTabs [data-baseweb="tab"] {
         background-color: #D8D7DF;
@@ -46,6 +47,10 @@ st.markdown("""
         color: #001E4F;
         font-weight: 500;
         font-family: 'Ringside', sans-serif !important;
+        min-width: 180px;
+        flex: 1;
+        text-align: center;
+        padding: 8px 16px;
     }
     .stTabs [aria-selected="true"] {
         background-color: #2C5697;
