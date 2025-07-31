@@ -413,7 +413,7 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
     min_safe_spreads = safe_bins.groupby('Category').agg(
         Min_Safe_Spread_Bin=('Spread Bin', 'min'),
         Avg_Return_at_Threshold=('avg_return', 'first'),
-        Negative_Return_Probability=('prob_negative', 'first'),
+        Percent_Historical_Negative_Returns=('prob_negative', 'first'),
         Volatility_at_Threshold=('std_return', 'first')
     ).reset_index()
 
@@ -703,10 +703,11 @@ if uploaded_file is not None:
             st.subheader("Minimum Safe Spread Thresholds")
 
             # Allow user to adjust safety threshold and minimum observations interactively
+            st.markdown("**Negative Return Probability Threshold (%)**")
+            st.markdown("Set your acceptable level of risk by choosing the maximum percentage of historical returns allowed to be negative within each spread range. For example, choosing 0% means selecting only spread levels that have historically never experienced negative returns—though this does not guarantee future results.")
             safety_threshold = st.slider(
-                "Negative Return Probability Threshold (%)",
-                min_value=0.0, max_value=10.0, value=7.5, step=0.1,
-                help="Set your acceptable level of risk by choosing the maximum percentage of historical returns allowed to be negative within each spread range. For example, choosing 0% means selecting only spread levels that have historically never experienced negative returns—though this does not guarantee future results."
+                "Select Threshold (%)",
+                min_value=0.0, max_value=10.0, value=7.5, step=0.1
             ) / 100  # convert to decimal
 
             min_obs = st.number_input(
@@ -740,7 +741,7 @@ if uploaded_file is not None:
                     - **Category**: The sub-asset class or investment category
                     - **Min_Safe_Spread_Bin**: The minimum spread level (in decimal) where the probability of negative returns is below the threshold
                     - **Avg_Return_at_Threshold**: The average 1-year excess return at the minimum safe spread level
-                    - **Negative_Return_Probability**: The probability of negative returns at the minimum safe spread threshold
+                    - **Percent_Historical_Negative_Returns**: The percentage of historical returns that were negative at the minimum safe spread threshold
                     - **Volatility_at_Threshold**: The standard deviation of returns at the minimum safe spread level
                     - **Observations**: The number of historical observations used to calculate the statistics for this category
                     """)
