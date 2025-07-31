@@ -16,8 +16,76 @@ st.set_page_config(
     layout="wide"
 )
 
-# Title and description
-st.title("Spreads & 12 Month Returns Analysis")
+# Add company logo to top right
+col1, col2, col3 = st.columns([3, 1, 1])
+with col1:
+    st.title("Spreads & 12 Month Returns Analysis")
+with col3:
+    st.image("https://rubricsam.com/wp-content/uploads/2021/01/cropped-rubrics-logo-tight.png", width=150)
+
+# Apply company color scheme and font
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Ringside:wght@300;400;500;600;700&display=swap');
+    
+    * {
+        font-family: 'Ringside', sans-serif !important;
+    }
+    
+    .stApp {
+        background-color: #f8f9fa;
+        font-family: 'Ringside', sans-serif !important;
+    }
+    
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: #D8D7DF;
+        border-radius: 4px 4px 0px 0px;
+        color: #001E4F;
+        font-weight: 500;
+        font-family: 'Ringside', sans-serif !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #2C5697;
+        color: white;
+    }
+    .stButton > button {
+        background-color: #2C5697;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 16px;
+        font-family: 'Ringside', sans-serif !important;
+    }
+    .stButton > button:hover {
+        background-color: #001E4F;
+    }
+    .stSelectbox > div > div {
+        background-color: white;
+        border: 1px solid #D8D7DF;
+        font-family: 'Ringside', sans-serif !important;
+    }
+    .stSlider > div > div > div > div {
+        background-color: #2C5697;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Ringside', sans-serif !important;
+    }
+    
+    .stMarkdown {
+        font-family: 'Ringside', sans-serif !important;
+    }
+    
+    .stDataFrame {
+        font-family: 'Ringside', sans-serif !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Description
 st.markdown("Upload your Excel file to analyze excess returns by spread categories and fixed income categories.")
 
 # File upload
@@ -257,14 +325,13 @@ def create_heatmap(combined_df):
     # Create pivot table for heatmap
     pivot_df = summary_df.pivot(index="Category", columns="Spread Category", values="Mean")
     
-    # Define explicitly custom diverging colorscale (negative=red, positive=green)
+    # Define company color scheme (negative=orange, positive=blue)
     custom_colorscale = [
-        [0.0, "#660000"],    # Very dark red for strong negative
-        [0.1, "#8B0000"],    # Dark red for moderate negative
-        [0.2, "#B22222"],    # Fire brick for light negative
+        [0.0, "#CF4520"],    # Rubrics Orange for strong negative
+        [0.25, "#CF4520"],   # Rubrics Orange for moderate negative
         [0.5, "white"],      # Neutral
-        [0.8, "#228B22"],    # Forest green for moderate positive
-        [1.0, "#006400"]     # Dark green for strong positive
+        [0.75, "#2C5697"],   # Rubrics Medium Blue for moderate positive
+        [1.0, "#001E4F"]     # Rubrics Blue for strong positive
     ]
     
     # Plot heatmap explicitly with custom colorscale
@@ -345,17 +412,19 @@ def create_violin_plot(combined_df):
             # Calculate mean for overall violin color
             mean_value = spread_data.mean()
             
-            # Create color gradient based on mean value
+            # Create color gradient based on mean value using company colors
             if mean_value <= 0:
-                # Negative mean: red gradient
+                # Negative mean: Rubrics Orange gradient
                 intensity = abs(mean_value) / 20  # Normalize to max negative
                 intensity = min(intensity, 1.0)
-                color = f'rgba(255, {int(255*(1-intensity))}, {int(255*(1-intensity))}, 0.3)'
+                # Convert Rubrics Orange (#CF4520) to rgba with opacity
+                color = f'rgba(207, 69, 32, {0.3 + intensity * 0.4})'  # #CF4520 with varying opacity
             else:
-                # Positive mean: green gradient
+                # Positive mean: Rubrics Blue gradient
                 intensity = mean_value / 30  # Normalize to max positive
                 intensity = min(intensity, 1.0)
-                color = f'rgba({int(255*(1-intensity))}, 255, {int(255*(1-intensity))}, 0.3)'
+                # Convert Rubrics Medium Blue (#2C5697) to rgba with opacity
+                color = f'rgba(44, 86, 151, {0.3 + intensity * 0.4})'  # #2C5697 with varying opacity
             
             fig.add_trace(go.Violin(
                 y=spread_data,
@@ -409,35 +478,15 @@ if uploaded_file is not None:
             st.metric("Date Range", f"{combined_df['Date'].min().strftime('%Y-%m-%d')} to {combined_df['Date'].max().strftime('%Y-%m-%d')}")
         
         # Create tabs for different visualizations
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            "Confidence Intervals", 
-            "Summary Table", 
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "Heatmap", 
-            "Violin Plot",
             "Average Returns by Spread",
+            "Violin Plot",
+            "Summary Table", 
             "Download Data"
         ])
         
         with tab1:
-            st.subheader("Confidence Interval Analysis")
-            fig_ci = create_confidence_interval_plot(combined_df)
-            st.plotly_chart(fig_ci, use_container_width=True)
-        
-        with tab2:
-            st.subheader("Summary Statistics")
-            summary_df = create_summary_table(combined_df)
-            st.dataframe(summary_df, use_container_width=True)
-            
-            # Download button for summary
-            csv = summary_df.to_csv(index=False)
-            st.download_button(
-                label="Download Summary as CSV",
-                data=csv,
-                file_name="spread_summary.csv",
-                mime="text/csv"
-            )
-        
-        with tab3:
             st.subheader("Heatmap Analysis")
             fig_heatmap, pivot_df, heatmap_summary_df = create_heatmap(combined_df)
             st.plotly_chart(fig_heatmap, use_container_width=True)
@@ -451,12 +500,7 @@ if uploaded_file is not None:
                 mime="text/csv"
             )
         
-        with tab4:
-            st.subheader("Distribution Analysis")
-            fig_violin = create_violin_plot(combined_df)
-            st.plotly_chart(fig_violin, use_container_width=True)
-        
-        with tab5:
+        with tab2:
             st.subheader("Average Returns by Spread Level")
             
             # User explicitly selects reference sub-asset class
@@ -516,10 +560,70 @@ if uploaded_file is not None:
                 st.subheader(f"Excess Returns Statistics when {reference_class} Spread ≈ {input_spread_bps} basis points (±10 bps)")
                 st.dataframe(stats_df.round(2), use_container_width=True)
 
-                # Optional bar chart explicitly for clear visual representation
-                st.bar_chart(stats_df.set_index('Sub-Asset Class')['Average Excess Return (%)'])
+                # Create ordered bar chart with company colors
+                # Sort by average excess return from lowest to highest
+                sorted_stats = stats_df.sort_values('Average Excess Return (%)')
+                
+                # Create custom colors based on company palette
+                colors = []
+                for value in sorted_stats['Average Excess Return (%)']:
+                    if value < 0:
+                        # Negative values: use Rubrics Orange (#CF4520)
+                        colors.append('#CF4520')
+                    else:
+                        # Positive values: use Rubrics Blue (#2C5697)
+                        colors.append('#2C5697')
+                
+                # Create bar chart with custom colors
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=sorted_stats['Sub-Asset Class'],
+                        y=sorted_stats['Average Excess Return (%)'],
+                        marker_color=colors,
+                        text=sorted_stats['Average Excess Return (%)'].round(2),
+                        textposition='auto',
+                    )
+                ])
+                
+                fig.update_layout(
+                    title=f"Average Excess Returns by Sub-Asset Class (when {reference_class} Spread ≈ {input_spread_bps} bps)",
+                    xaxis_title="Sub-Asset Class",
+                    yaxis_title="Average Excess Return (%)",
+                    height=500,
+                    showlegend=False
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Download button for Average Returns by Spread data
+                csv_avg_returns = stats_df.to_csv(index=False)
+                st.download_button(
+                    label="Download Average Returns by Spread Data as CSV",
+                    data=csv_avg_returns,
+                    file_name=f"average_returns_{reference_class}_{input_spread_bps}bps.csv",
+                    mime="text/csv"
+                )
         
-        with tab6:
+        with tab3:
+            st.subheader("Distribution Analysis")
+            fig_violin = create_violin_plot(combined_df)
+            st.plotly_chart(fig_violin, use_container_width=True)
+        
+        with tab4:
+            st.subheader("Summary Statistics")
+            summary_df = create_summary_table(combined_df)
+            st.dataframe(summary_df, use_container_width=True)
+            
+            # Download button for summary
+            csv = summary_df.to_csv(index=False)
+            st.download_button(
+                label="Download Summary as CSV",
+                data=csv,
+                file_name="spread_summary.csv",
+                mime="text/csv"
+            )
+        
+        with tab5:
             st.subheader("Download Processed Data")
             
             # Download original processed data
@@ -560,10 +664,10 @@ else:
     4. **Spread Format**: Spreads should be in decimal format (e.g., 0.015 for 150 bps)
     
     ### What you'll get:
-    - **Confidence Interval Plot**: Interactive visualization of mean returns with 95% confidence intervals
-    - **Summary Table**: Statistical summary by category and spread level
-    - **Heatmap**: Visual representation of mean returns across categories
+    - **Heatmap**: Visual representation of mean returns across categories with date range selection
+    - **Average Returns by Spread**: Analysis of cross-asset performance at specific spread levels
     - **Violin Plot**: Distribution analysis with date range selection
+    - **Summary Table**: Statistical summary by category and spread level
     - **Download Options**: Export results in CSV or Excel format
     """)
 
