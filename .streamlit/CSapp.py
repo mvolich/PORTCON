@@ -389,8 +389,8 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
     # Create a copy to avoid modifying the original dataframe
     df = combined_df.copy()
     
-    # Create granular spread bins (increments of 10 bps or 0.1%)
-    spread_bin_size = 0.05  # 0.1% = 0.001 in decimal
+    # Create granular spread bins (increments of 50 bps or 0.5%)
+    spread_bin_size = 0.005  # 0.5% = 0.005 in decimal
     df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(3)
 
     # Group and calculate statistics
@@ -715,12 +715,19 @@ if uploaded_file is not None:
 
             # Calculate Minimum Safe Spread Thresholds
             try:
+                st.write("Debug: Starting calculation...")
+                st.write(f"Debug: Safety threshold = {safety_threshold:.3f}")
+                st.write(f"Debug: Min observations = {min_obs}")
+                
                 min_safe_spreads_df = calculate_min_safe_spreads(
                     combined_df, safety_threshold=safety_threshold, min_obs=min_obs
                 )
+                
+                st.write(f"Debug: Function returned dataframe with {len(min_safe_spreads_df)} rows")
 
                 # Display results
                 if len(min_safe_spreads_df) > 0:
+                    st.success(f"Found minimum safe spreads for {len(min_safe_spreads_df)} categories")
                     st.dataframe(min_safe_spreads_df, use_container_width=True)
                     
                     # Optional: Add download button for this data
@@ -734,8 +741,41 @@ if uploaded_file is not None:
                 else:
                     st.warning("No categories found that meet the current safety threshold and minimum observations criteria. Try reducing the safety threshold or minimum observations.")
                     
+                    # Show some debug info to help understand why
+                    st.write("Debug: Let's check what's happening...")
+                    
+                    # Test the function step by step
+                    df = combined_df.copy()
+                    spread_bin_size = 0.005
+                    df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(3)
+                    
+                    st.write(f"Debug: Created {df['Spread Bin'].nunique()} unique spread bins")
+                    st.write(f"Debug: Spread bin range: {df['Spread Bin'].min():.3f} to {df['Spread Bin'].max():.3f}")
+                    
+                    grouped_stats = df.groupby(['Category', 'Spread Bin']).agg(
+                        avg_return=('1 Yr Ahead ER', 'mean'),
+                        std_return=('1 Yr Ahead ER', 'std'),
+                        prob_negative=('1 Yr Ahead ER', lambda x: (x < 0).mean()),
+                        observations=('1 Yr Ahead ER', 'count')
+                    ).reset_index()
+                    
+                    st.write(f"Debug: Grouped stats has {len(grouped_stats)} rows")
+                    
+                    reliable_bins = grouped_stats[grouped_stats['observations'] >= min_obs]
+                    st.write(f"Debug: After min obs filter: {len(reliable_bins)} rows")
+                    
+                    safe_bins = reliable_bins[reliable_bins['prob_negative'] <= safety_threshold]
+                    st.write(f"Debug: After safety threshold filter: {len(safe_bins)} rows")
+                    
+                    if len(safe_bins) > 0:
+                        st.write("Debug: Sample of safe bins:")
+                        st.dataframe(safe_bins.head(10))
+                    
             except Exception as e:
                 st.error(f"Error calculating minimum safe spreads: {str(e)}")
+                import traceback
+                st.write("Full error traceback:")
+                st.code(traceback.format_exc())
                 st.write("Debug info:")
                 st.write(f"Data shape: {combined_df.shape}")
                 st.write(f"Categories: {combined_df['Category'].unique()}")
