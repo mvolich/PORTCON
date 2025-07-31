@@ -470,19 +470,20 @@ if uploaded_file is not None:
             # Display the valid range for the selected class in basis points
             st.info(f"**{reference_class}** spread range: {min_spread_bps:.0f} to {max_spread_bps:.0f} basis points")
 
-            # User inputs spread in basis points (whole numbers only)
-            input_spread_bps = st.number_input(
-                "Enter Spread Level (basis points) - Whole Numbers Only", 
+            # User selects spread level using a slider
+            input_spread_bps = st.slider(
+                "Select Spread Level (basis points)", 
                 min_value=int(min_spread_bps), 
                 max_value=int(max_spread_bps), 
                 value=int(min_spread_bps + (max_spread_bps - min_spread_bps) / 2), 
-                step=1
+                step=1,
+                help="Select a spread level. The analysis will find all dates when the reference class had spreads within ±10 basis points of this level."
             )
 
-            # Define explicit spread range (e.g., 100 bps -> 0.0100 to 0.0199)
+            # Define explicit spread range (±10 basis points around selected level)
             # Convert basis points to decimal for comparison with data
-            lower_bound = input_spread_bps / 100
-            upper_bound = (input_spread_bps + 99) / 100
+            lower_bound = (input_spread_bps - 10) / 100
+            upper_bound = (input_spread_bps + 10) / 100
 
             # Find dates explicitly where the reference class spread is within the chosen range
             ref_dates = combined_df[(combined_df['Category'] == reference_class) &
@@ -491,7 +492,7 @@ if uploaded_file is not None:
 
             # Check if there are matching records
             if ref_dates.empty:
-                st.warning(f"No historical data found for {reference_class} at the entered spread level of {input_spread_bps} basis points")
+                st.warning(f"No historical data found for {reference_class} at the selected spread level of {input_spread_bps} basis points (±10 bps)")
                 st.write(f"Available spread levels for {reference_class}:")
                 available_spreads = sorted(ref_class_data['Spread'].unique() * 100)
                 st.write(f"Min: {available_spreads[0]:.0f}, Max: {available_spreads[-1]:.0f} basis points")
@@ -499,12 +500,20 @@ if uploaded_file is not None:
                 # Get explicitly corresponding data for all sub-asset classes on these dates
                 filtered_df = combined_df[combined_df['Date'].isin(ref_dates)]
 
+                # Display calculation methodology
+                st.info(f"""
+                **Calculation Methodology:**
+                - Found {len(ref_dates)} dates when {reference_class} had spreads between {(input_spread_bps-10):.0f} and {(input_spread_bps+10):.0f} basis points
+                - For each sub-asset class, calculated the average 1-year ahead excess return across these {len(ref_dates)} dates
+                - This shows how other asset classes performed when {reference_class} was at the selected spread level
+                """)
+
                 # Explicitly calculate statistics per sub-asset class
                 stats_df = filtered_df.groupby('Category')['1 Yr Ahead ER'].agg(['mean', 'std', 'max', 'min', 'count']).reset_index()
                 stats_df.columns = ['Sub-Asset Class', 'Average Excess Return (%)', 'Std Deviation', 'Max Return', 'Min Return', 'Observations']
 
                 # Explicitly display results
-                st.subheader(f"Excess Returns Statistics when {reference_class} Spread ≈ {input_spread_bps} basis points")
+                st.subheader(f"Excess Returns Statistics when {reference_class} Spread ≈ {input_spread_bps} basis points (±10 bps)")
                 st.dataframe(stats_df.round(2), use_container_width=True)
 
                 # Optional bar chart explicitly for clear visual representation
