@@ -390,7 +390,7 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
     df = combined_df.copy()
     
     # Create granular spread bins (increments of 50 bps or 0.5%)
-    spread_bin_size = 0.005  # 0.5% = 0.005 in decimal
+    spread_bin_size = 0.0025  # 0.5% = 0.005 in decimal
     df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(3)
 
     # Group and calculate statistics
