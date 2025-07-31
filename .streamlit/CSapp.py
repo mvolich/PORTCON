@@ -386,12 +386,15 @@ def value_to_color(val, vmin=-20, vmax=30):
 
 def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
     """Calculate minimum safe spread thresholds for each category."""
+    # Create a copy to avoid modifying the original dataframe
+    df = combined_df.copy()
+    
     # Create granular spread bins (increments of 10 bps or 0.1%)
-    spread_bin_size = 0.1
-    combined_df['Spread Bin'] = (np.floor(combined_df['Spread'] / spread_bin_size) * spread_bin_size).round(1)
+    spread_bin_size = 0.001  # 0.1% = 0.001 in decimal
+    df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(3)
 
     # Group and calculate statistics
-    grouped_stats = combined_df.groupby(['Category', 'Spread Bin']).agg(
+    grouped_stats = df.groupby(['Category', 'Spread Bin']).agg(
         avg_return=('1 Yr Ahead ER', 'mean'),
         std_return=('1 Yr Ahead ER', 'std'),
         prob_negative=('1 Yr Ahead ER', lambda x: (x < 0).mean()),
@@ -402,7 +405,12 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
     reliable_bins = grouped_stats[grouped_stats['observations'] >= min_obs]
 
     # Determine minimum safe spread thresholds
-    min_safe_spreads = reliable_bins[reliable_bins['prob_negative'] <= safety_threshold].groupby('Category').agg(
+    safe_bins = reliable_bins[reliable_bins['prob_negative'] <= safety_threshold]
+    
+    if len(safe_bins) == 0:
+        return pd.DataFrame()
+    
+    min_safe_spreads = safe_bins.groupby('Category').agg(
         Min_Safe_Spread_Bin=('Spread Bin', 'min'),
         Avg_Return_at_Threshold=('avg_return', 'first'),
         Negative_Return_Probability=('prob_negative', 'first'),
@@ -706,21 +714,32 @@ if uploaded_file is not None:
             )
 
             # Calculate Minimum Safe Spread Thresholds
-            min_safe_spreads_df = calculate_min_safe_spreads(
-                combined_df, safety_threshold=safety_threshold, min_obs=min_obs
-            )
+            try:
+                min_safe_spreads_df = calculate_min_safe_spreads(
+                    combined_df, safety_threshold=safety_threshold, min_obs=min_obs
+                )
 
-            # Display results
-            st.dataframe(min_safe_spreads_df, use_container_width=True)
-
-            # Optional: Add download button for this data
-            csv_safe_spreads = min_safe_spreads_df.to_csv(index=False)
-            st.download_button(
-                label="Download Minimum Safe Spread Thresholds as CSV",
-                data=csv_safe_spreads,
-                file_name="minimum_safe_spreads.csv",
-                mime="text/csv"
-            )
+                # Display results
+                if len(min_safe_spreads_df) > 0:
+                    st.dataframe(min_safe_spreads_df, use_container_width=True)
+                    
+                    # Optional: Add download button for this data
+                    csv_safe_spreads = min_safe_spreads_df.to_csv(index=False)
+                    st.download_button(
+                        label="Download Minimum Safe Spread Thresholds as CSV",
+                        data=csv_safe_spreads,
+                        file_name="minimum_safe_spreads.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    st.warning("No categories found that meet the current safety threshold and minimum observations criteria. Try reducing the safety threshold or minimum observations.")
+                    
+            except Exception as e:
+                st.error(f"Error calculating minimum safe spreads: {str(e)}")
+                st.write("Debug info:")
+                st.write(f"Data shape: {combined_df.shape}")
+                st.write(f"Categories: {combined_df['Category'].unique()}")
+                st.write(f"Spread range: {combined_df['Spread'].min():.4f} to {combined_df['Spread'].max():.4f}")
 
 else:
     st.info("Please upload an Excel file to begin the analysis.")
