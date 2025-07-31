@@ -705,7 +705,7 @@ if uploaded_file is not None:
             # Allow user to adjust safety threshold and minimum observations interactively
             safety_threshold = st.slider(
                 "Negative Return Probability Threshold (%)",
-                min_value=0.0, max_value=10.0, value=5.0, step=0.1
+                min_value=0.0, max_value=10.0, value=7.5, step=0.1
             ) / 100  # convert to decimal
 
             min_obs = st.number_input(
@@ -746,7 +746,7 @@ if uploaded_file is not None:
                     
                     # Test the function step by step
                     df = combined_df.copy()
-                    spread_bin_size = 0.005
+                    spread_bin_size = 0.01
                     df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(3)
                     
                     st.write(f"Debug: Created {df['Spread Bin'].nunique()} unique spread bins")
