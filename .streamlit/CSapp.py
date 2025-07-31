@@ -670,7 +670,7 @@ if uploaded_file is not None:
                 mime="text/csv"
             )
         
-        with tab5:
+        with tab6:
             st.subheader("Download Processed Data")
             
             # Download original processed data
@@ -699,18 +699,18 @@ if uploaded_file is not None:
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         
-        with tab6:
+        with tab5:
             st.subheader("Minimum Safe Spread Thresholds")
 
             # Allow user to adjust safety threshold and minimum observations interactively
             safety_threshold = st.slider(
                 "Negative Return Probability Threshold (%)",
-                min_value=0.0, max_value=30.0, value=15.0, step=0.1
+                min_value=0.0, max_value=10.0, value=5.0, step=0.1
             ) / 100  # convert to decimal
 
             min_obs = st.number_input(
                 "Minimum Number of Observations per Bin",
-                min_value=1, max_value=50, value=5, step=1
+                min_value=1, max_value=50, value=10, step=1
             )
 
             # Calculate Minimum Safe Spread Thresholds
