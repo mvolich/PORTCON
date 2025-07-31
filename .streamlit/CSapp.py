@@ -409,11 +409,12 @@ if uploaded_file is not None:
             st.metric("Date Range", f"{combined_df['Date'].min().strftime('%Y-%m-%d')} to {combined_df['Date'].max().strftime('%Y-%m-%d')}")
         
         # Create tabs for different visualizations
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "Confidence Intervals", 
             "Summary Table", 
             "Heatmap", 
             "Violin Plot",
+            "Average Returns by Spread",
             "Download Data"
         ])
         
@@ -456,6 +457,42 @@ if uploaded_file is not None:
             st.plotly_chart(fig_violin, use_container_width=True)
         
         with tab5:
+            st.subheader("Average Returns by Spread Level")
+            
+            # User explicitly selects reference sub-asset class
+            reference_class = st.selectbox("Select Reference Sub-Asset Class", combined_df['Category'].unique())
+
+            # User explicitly inputs spread rounded to one decimal place
+            input_spread = st.number_input("Enter Spread Level (%) - 1 Decimal Place", min_value=0.0, max_value=20.0, value=2.5, step=0.1)
+
+            # Define explicit spread range (e.g., 2.5% -> 2.500000% to 2.599999%)
+            lower_bound = input_spread / 100
+            upper_bound = (input_spread + 0.099999) / 100
+
+            # Find dates explicitly where the reference class spread is within the chosen range
+            ref_dates = combined_df[(combined_df['Category'] == reference_class) &
+                                    (combined_df['Spread'] >= lower_bound) &
+                                    (combined_df['Spread'] <= upper_bound)]['Date']
+
+            # Check if there are matching records
+            if ref_dates.empty:
+                st.warning(f"No historical data found for {reference_class} at the entered spread level of {input_spread:.1f}%")
+            else:
+                # Get explicitly corresponding data for all sub-asset classes on these dates
+                filtered_df = combined_df[combined_df['Date'].isin(ref_dates)]
+
+                # Explicitly calculate statistics per sub-asset class
+                stats_df = filtered_df.groupby('Category')['1 Yr Ahead ER'].agg(['mean', 'std', 'max', 'min', 'count']).reset_index()
+                stats_df.columns = ['Sub-Asset Class', 'Average Excess Return (%)', 'Std Deviation', 'Max Return', 'Min Return', 'Observations']
+
+                # Explicitly display results
+                st.subheader(f"Excess Returns Statistics when {reference_class} Spread ≈ {input_spread:.1f}%")
+                st.dataframe(stats_df.round(2), use_container_width=True)
+
+                # Optional bar chart explicitly for clear visual representation
+                st.bar_chart(stats_df.set_index('Sub-Asset Class')['Average Excess Return (%)'])
+        
+        with tab6:
             st.subheader("Download Processed Data")
             
             # Download original processed data
