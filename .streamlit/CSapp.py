@@ -386,38 +386,42 @@ def value_to_color(val, vmin=-20, vmax=30):
 
 def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
     """Calculate minimum safe spread thresholds for each category."""
-    # Create a copy to avoid modifying the original dataframe
     df = combined_df.copy()
-    
-    # Create granular spread bins (increments of 50 bps or 0.5%)
-    spread_bin_size = 0.0025  # 0.5% = 0.005 in decimal
-    df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(3)
+    spread_bin_size = 0.0025
+    df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(4)
 
-    # Group and calculate statistics
+    # Group and calculate negative return probability
     grouped_stats = df.groupby(['Category', 'Spread Bin']).agg(
         avg_return=('1 Yr Ahead ER', 'mean'),
         std_return=('1 Yr Ahead ER', 'std'),
-        prob_negative=('1 Yr Ahead ER', lambda x: (x < 0).mean()),
+        percent_negative=('1 Yr Ahead ER', lambda x: (x < 0).mean()),
         observations=('1 Yr Ahead ER', 'count')
     ).reset_index()
 
-    # Apply minimum observations filter
+    # Filter by minimum observations for statistical reliability
     reliable_bins = grouped_stats[grouped_stats['observations'] >= min_obs]
 
-    # Determine minimum safe spread thresholds
-    safe_bins = reliable_bins[reliable_bins['prob_negative'] <= safety_threshold]
-    
-    if len(safe_bins) == 0:
-        return pd.DataFrame()
-    
-    min_safe_spreads = safe_bins.groupby('Category').agg(
-        Min_Safe_Spread_Bin=('Spread Bin', 'min'),
-        Avg_Return_at_Threshold=('avg_return', 'first'),
-        Percent_Historical_Negative_Returns=('prob_negative', 'first'),
-        Volatility_at_Threshold=('std_return', 'first')
-    ).reset_index()
+    results = []
 
-    return min_safe_spreads
+    # For each category, sort from lowest spread bin upwards and find the threshold bin
+    for category in reliable_bins['Category'].unique():
+        category_df = reliable_bins[reliable_bins['Category'] == category].sort_values('Spread Bin')
+
+        # Find first bin where the historical negative percentage drops to or below threshold
+        safe_bins = category_df[category_df['percent_negative'] <= safety_threshold]
+
+        if not safe_bins.empty:
+            threshold_bin = safe_bins.iloc[0]  # first bin from tightest upward
+            results.append({
+                'Category': category,
+                'Min_Safe_Spread_Bin': threshold_bin['Spread Bin'],
+                'Avg_Return_at_Threshold': threshold_bin['avg_return'],
+                'Percent_Historical_Negative_Returns': threshold_bin['percent_negative'],
+                'Volatility_at_Threshold': threshold_bin['std_return'],
+                'Observations': threshold_bin['observations']
+            })
+
+    return pd.DataFrame(results)
 
 def create_violin_plot(combined_df):
     """Create violin plot with date range selector and diverging color scale."""
@@ -746,24 +750,7 @@ if uploaded_file is not None:
                     - **Observations**: The number of historical observations used to calculate the statistics for this category
                     """)
                     
-                    # Add observations column to the dataframe
-                    # We need to get the observations count from the calculation process
-                    df = combined_df.copy()
-                    spread_bin_size = 0.0025
-                    df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(3)
-                    
-                    # Get observations for each category at their minimum safe spread
-                    observations_data = []
-                    for _, row in min_safe_spreads_df.iterrows():
-                        category = row['Category']
-                        min_spread = row['Min_Safe_Spread_Bin']
-                        
-                        # Count observations for this category at this spread level
-                        obs_count = len(df[(df['Category'] == category) & (df['Spread Bin'] == min_spread)])
-                        observations_data.append(obs_count)
-                    
-                    # Add observations column
-                    min_safe_spreads_df['Observations'] = observations_data
+                    # Observations column is already included in the dataframe from the calculation
                     
                     st.dataframe(min_safe_spreads_df, use_container_width=True)
                     
