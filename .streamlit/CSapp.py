@@ -711,7 +711,7 @@ if uploaded_file is not None:
             st.markdown("Set your acceptable level of risk by choosing the maximum percentage of historical returns allowed to be negative within each spread range. For example, choosing 0% means selecting only spread levels that have historically never experienced negative returns—though this does not guarantee future results.")
             safety_threshold = st.slider(
                 "Select Threshold (%)",
-                min_value=0.0, max_value=10.0, value=7.5, step=0.1
+                min_value=0.0, max_value=40.0, value=7.5, step=0.1
             ) / 100  # convert to decimal
 
             min_obs = st.number_input(
