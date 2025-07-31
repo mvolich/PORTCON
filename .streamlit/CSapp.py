@@ -387,7 +387,7 @@ def value_to_color(val, vmin=-20, vmax=30):
 def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
     """Calculate minimum safe spread thresholds for each category."""
     df = combined_df.copy()
-    spread_bin_size = 0.0025
+    spread_bin_size = 0.005  # Increased from 0.0025 to 0.005 (50 bps instead of 25 bps)
     df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(4)
 
     # Group and calculate negative return probability
@@ -414,6 +414,7 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
             threshold_bin = safe_bins.iloc[0]  # first bin from tightest upward
             # Calculate negative return observations
             negative_obs = int(threshold_bin['percent_negative'] * threshold_bin['observations'])
+            negative_percentage = (negative_obs / threshold_bin['observations']) * 100
             
             results.append({
                 'Category': category,
@@ -421,7 +422,7 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
                 'Avg_Return_Pct': threshold_bin['avg_return'],  # Already in percentage format
                 'Negative_Return_Observations': negative_obs,
                 'Total_Observations': threshold_bin['observations'],
-                'Historical_Negative_Rate': f"{negative_obs}/{threshold_bin['observations']}",
+                'Historical_Negative_Rate': f"{negative_obs} / {threshold_bin['observations']} = {negative_percentage:.3f}%",
                 'Volatility_Pct': threshold_bin['std_return']  # Already in percentage format
             })
 
@@ -715,7 +716,7 @@ if uploaded_file is not None:
 
             safety_threshold = st.slider(
                 "Risk Tolerance (%)",
-                min_value=0.0, max_value=40.0, value=7.5, step=0.1
+                min_value=0, max_value=40, value=8, step=1
             ) / 100  # convert to decimal
 
             min_obs = st.number_input(
@@ -748,17 +749,17 @@ if uploaded_file is not None:
                     
                     st.info(f"""
                     ### How to Interpret This Table:
-                    For your selected risk tolerance of **{safety_threshold*100:.1f}% negative returns**, the table shows the **tightest (lowest) spread** historically required to meet or better this risk level.
+                    For your selected risk tolerance of **{safety_threshold*100:.0f}% negative returns**, the table shows the **tightest (lowest) spread** historically required to meet or better this risk level.
 
                     **Example: {example_row['Category']}**
-                    - **Spread Threshold: {example_row['Spread Threshold (bps)']:.1f} bps** - This is the minimum spread level where historical negative returns were ≤ {safety_threshold*100:.1f}%
-                    - **Historical % of Negative Returns: {example_row['Historical % of Negative Returns']}** - Shows the ratio of negative observations to total observations at this spread level
+                    - **Spread Threshold: {example_row['Spread Threshold (bps)']:.1f} bps** - This is the minimum spread level where historical negative returns were ≤ {safety_threshold*100:.0f}%
+                    - **Historical % of Negative Returns: {example_row['Historical % of Negative Returns']}** - Shows the ratio and calculated percentage of negative observations at this spread level
                     - **Negative Return Observations: {example_row['Negative Return Observations']}** - Number of historical periods with negative returns at this spread level
                     - **Total Observations: {example_row['Total Observations']}** - Total number of historical periods used to calculate these statistics
                     - **Avg 1Y Return: {example_row['Avg 1Y Return (%)']:.2f}%** - The average 1-year excess return when spreads were at this level
                     - **Return Volatility: {example_row['Return Volatility (%)']:.2f}%** - The standard deviation of returns at this spread level
 
-                    **Key Insight:** Spreads below {example_row['Spread Threshold (bps)']:.1f} bps for {example_row['Category']} historically resulted in negative returns more than {safety_threshold*100:.1f}% of the time, exceeding your risk tolerance.
+                    **Key Insight:** Spreads below {example_row['Spread Threshold (bps)']:.1f} bps for {example_row['Category']} historically resulted in negative returns more than {safety_threshold*100:.0f}% of the time, exceeding your risk tolerance.
                     """)
 
                     st.dataframe(min_safe_spreads_df, use_container_width=True)
@@ -776,9 +777,9 @@ if uploaded_file is not None:
                 # Simplified Calculation Methodology
                 st.info(f"""
                 ### Calculation Methodology:
-                - Grouped historical credit spreads into intervals of 25 basis points (bps).
+                - Grouped historical credit spreads into intervals of 50 basis points (bps).
                 - Calculated the percentage of negative 1-year returns historically observed for each bin.
-                - For each category, identified the **lowest spread** where historical negative returns meet or fall below your selected risk tolerance ({safety_threshold*100:.1f}%).
+                - For each category, identified the **lowest spread** where historical negative returns meet or fall below your selected risk tolerance ({safety_threshold*100:.0f}%).
                 - Only considered spread bins with at least {min_obs} observations.
                 """)
                     
