@@ -541,12 +541,33 @@ def negative_return_probability_plot(combined_df, min_obs=10):
         annotation_position="top left"
     )
 
+    # Calculate y-axis range based on visible data only
+    visible_data = []
+    for category in selected_categories:
+        cat_df = grouped_stats[grouped_stats['Category'] == category]
+        cat_df['Spread_Category_Order'] = cat_df['Spread Category'].apply(lambda x: spread_order.index(x))
+        cat_df = cat_df.sort_values('Spread_Category_Order')
+        
+        x_vals = cat_df['Spread Category']
+        y_vals = cat_df['percent_negative']
+        
+        # Only include data points that meet the tolerance (investable)
+        investable_y = [y for y in y_vals if y <= tolerance]
+        visible_data.extend(investable_y)
+    
+    # Set y-axis range based on visible data
+    if visible_data:
+        y_max = max(visible_data) + 2  # Add small buffer
+        y_range = [0, max(y_max, tolerance + 2)]  # Ensure tolerance line is visible
+    else:
+        y_range = [0, tolerance + 5]  # Fallback if no visible data
+
     fig.update_layout(
         title="Historical Negative Return Probability by Spread Category",
         xaxis_title="Spread Category (bps)",
         yaxis_title="% Observations with Negative 1Y Returns",
         hovermode="closest",
-        yaxis=dict(range=[0, grouped_stats['percent_negative'].max() + 5]),
+        yaxis=dict(range=y_range),
         legend_title="Asset Category",
         height=600,
         xaxis=dict(
