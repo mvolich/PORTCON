@@ -313,16 +313,21 @@ if uploaded_file is not None:
         
         metadata = metadata.loc[idx]
         
-        # Extract numeric columns - exactly as original file with explicit float casting
-        rating = metadata['Rating_Num'].values.astype(float)
-        duration = metadata['Duration'].values.astype(float)
-        yields = metadata['Current Yield Hdgd'].values.astype(float) / 100
+        # Debug statements to confirm alignment and numeric correctness
+        st.write("Metadata after processing:", metadata.head())
+        st.write("Returns after processing:", df_pct_change.head())
+        st.write("Metadata dtypes:", metadata.dtypes)
         
-        # Extract binary flags with explicit float casting (as original file)
-        is_at1 = metadata['Is_AT1'].values.astype(float)
-        is_em = metadata['Is_EM'].values.astype(float)
-        is_non_ig = metadata['Is_Non_IG'].values.astype(float)
-        is_hybrid = metadata['Is_Hybrid'].values.astype(float)
+        # Extract numeric columns - exactly as original file (no explicit casting to avoid NaN issues)
+        rating = metadata['Rating_Num'].values
+        duration = metadata['Duration'].values
+        yields = metadata['Current Yield Hdgd'].values / 100
+        
+        # Extract binary flags - exactly as original file (no explicit casting to avoid NaN issues)
+        is_at1 = metadata['Is_AT1'].values
+        is_em = metadata['Is_EM'].values
+        is_non_ig = metadata['Is_Non_IG'].values
+        is_hybrid = metadata['Is_Hybrid'].values
         
         # Create constraints
         constraints_list = [cp.sum(w) == 1, w >= 0]
