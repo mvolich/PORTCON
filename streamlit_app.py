@@ -313,6 +313,12 @@ if uploaded_file is not None:
         
         metadata = metadata.loc[idx]
         
+        # Data types check for debugging
+        st.write("Data types check:")
+        st.write(metadata.dtypes)
+        st.write("Metadata head:")
+        st.write(metadata.head())
+        
         # Extract numeric columns - exactly as original file with explicit float casting
         rating = metadata['Rating_Num'].values.astype(float)
         duration = metadata['Duration'].values.astype(float)
