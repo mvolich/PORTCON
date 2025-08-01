@@ -451,6 +451,68 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
 
     return pd.DataFrame(results)
 
+def negative_return_probability_plot(combined_df, min_obs=10):
+    df = combined_df.copy()
+    df['Spread Category'] = df['Spread'].apply(categorize_spread)
+
+    grouped_stats = df.groupby(['Category', 'Spread Category']).agg(
+        percent_negative=('1 Yr Ahead ER', lambda x: (x < 0).mean() * 100),
+        avg_return=('1 Yr Ahead ER', 'mean'),
+        std_return=('1 Yr Ahead ER', 'std'),
+        observations=('1 Yr Ahead ER', 'count')
+    ).reset_index()
+
+    # Filter bins for minimum observations
+    grouped_stats = grouped_stats[grouped_stats['observations'] >= min_obs]
+
+    spread_order = ['<100', '100-150', '150-200', '200-250', 
+                    '250-300', '300-400', '400-600', '600-800', '800+']
+
+    fig = go.Figure()
+
+    for category in grouped_stats['Category'].unique():
+        cat_df = grouped_stats[grouped_stats['Category'] == category]
+        cat_df['Spread_Category_Order'] = cat_df['Spread Category'].apply(lambda x: spread_order.index(x))
+        cat_df = cat_df.sort_values('Spread_Category_Order')
+
+        fig.add_trace(go.Scatter(
+            x=cat_df['Spread Category'],
+            y=cat_df['percent_negative'],
+            mode='lines+markers',
+            name=category,
+            hovertemplate=(
+                "<b>%{fullData.name}</b><br>" +
+                "Spread Category: %{x}<br>" +
+                "Negative Returns: %{y:.2f}%<br>" +
+                "Avg Return: %{customdata[0]:.2f}%<br>" +
+                "Volatility: %{customdata[1]:.2f}%<br>" +
+                "Observations: %{customdata[2]}<extra></extra>"
+            ),
+            customdata=cat_df[['avg_return', 'std_return', 'observations']].values
+        ))
+
+    # Add risk tolerance line (user-selectable)
+    tolerance = st.slider("Risk Tolerance (%)", min_value=0, max_value=40, value=8, step=1)
+    fig.add_hline(
+        y=tolerance,
+        line_dash="dash",
+        line_color="red",
+        annotation_text=f"Risk Tolerance: {tolerance}% of 1-year return observations are negative at this level",
+        annotation_position="top left"
+    )
+
+    fig.update_layout(
+        title="Historical Negative Return Probability by Spread Category",
+        xaxis_title="Spread Category (bps)",
+        yaxis_title="% Observations with Negative 1Y Returns",
+        hovermode="closest",  # Show tooltip only for the line hovered
+        yaxis=dict(range=[0, grouped_stats['percent_negative'].max() + 5]),
+        legend_title="Asset Category",
+        height=600
+    )
+
+    return fig
+
 def create_violin_plot(combined_df):
     """Create violin plot with date range selector and diverging color scale."""
     combined_df['Spread Category'] = combined_df['Spread'].apply(categorize_spread)
@@ -559,9 +621,9 @@ if uploaded_file is not None:
         tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "Heatmap", 
             "Average Returns by Spread",
+            "Historical Risk Analysis",
             "Violin Plot",
             "Summary Table", 
-            "Minimum Safe Spreads",
             "Download Data"
         ])
         
@@ -684,23 +746,36 @@ if uploaded_file is not None:
                 )
         
         with tab3:
+            st.subheader("Historical Risk Analysis by Spread Category")
+            
+            min_obs = st.number_input(
+                "Minimum Number of Observations per Category",
+                min_value=1, max_value=50, value=10, step=1
+            )
+
+            # Create the negative return probability plot
+            fig_negative_returns = negative_return_probability_plot(combined_df, min_obs=min_obs)
+            st.plotly_chart(fig_negative_returns, use_container_width=True)
+            
+            # Add explanation
+            st.info("""
+            ### How to Interpret This Plot:
+            - **Lines**: Each line represents a different asset category
+            - **X-axis**: Spread categories from tightest (<100 bps) to widest (800+ bps)
+            - **Y-axis**: Percentage of historical observations with negative 1-year returns
+            - **Red dashed line**: Your selected risk tolerance threshold
+            - **Key insight**: Points below the red line meet your risk tolerance; points above exceed it
+            
+            **Interactive features:**
+            - Hover over lines to see detailed statistics for each spread category
+            - Adjust the risk tolerance slider to see how it affects the analysis
+            - Categories with lines that stay below your tolerance line are safer at those spread levels
+            """)
+        
+        with tab4:
             st.subheader("Distribution Analysis")
             fig_violin = create_violin_plot(combined_df)
             st.plotly_chart(fig_violin, use_container_width=True)
-        
-        with tab4:
-            st.subheader("Summary Statistics")
-            summary_df = create_summary_table(combined_df)
-            st.dataframe(summary_df, use_container_width=True)
-            
-            # Download button for summary
-            csv = summary_df.to_csv(index=False)
-            st.download_button(
-                label="Download Summary as CSV",
-                data=csv,
-                file_name="spread_summary.csv",
-                mime="text/csv"
-            )
         
         with tab6:
             st.subheader("Download Processed Data")
@@ -732,91 +807,18 @@ if uploaded_file is not None:
             )
         
         with tab5:
-
-            # Improved Slider Label and Description
-            st.markdown("### Maximum Tolerance of Experiencing a Negative 1Y Return ###")
-            st.markdown("Select the highest historical probability of experiencing negative returns you're comfortable accepting. Lower thresholds (e.g., 0%) are conservative, indicating spreads that historically never experienced negative returns. Higher thresholds (e.g., 10-20%) mean you accept greater historical risk.")
-
-            safety_threshold = st.slider(
-                "Risk Tolerance (%)",
-                min_value=0, max_value=40, value=8, step=1
-            ) / 100  # convert to decimal
-
-            min_obs = st.number_input(
-                "Minimum Number of Observations per Bin",
-                min_value=1, max_value=50, value=10, step=1
+            st.subheader("Summary Statistics")
+            summary_df = create_summary_table(combined_df)
+            st.dataframe(summary_df, use_container_width=True)
+            
+            # Download button for summary
+            csv = summary_df.to_csv(index=False)
+            st.download_button(
+                label="Download Summary as CSV",
+                data=csv,
+                file_name="spread_summary.csv",
+                mime="text/csv"
             )
-
-            # Calculate Minimum Safe Spread Thresholds
-            try:
-                min_safe_spreads_df = calculate_min_safe_spreads(
-                    combined_df, safety_threshold=safety_threshold, min_obs=min_obs
-                )
-
-                # Rename columns clearly for user interpretability
-                min_safe_spreads_df.rename(columns={
-                    'Min_Safe_Spread_Bps': 'Spread Threshold (bps)',
-                    'Spread_Category': 'Spread Category',
-                    'Avg_Return_Pct': 'Avg 1Y Return (%)',
-                    'Negative_Return_Observations': 'Negative Return Observations',
-                    'Total_Observations': 'Total Observations',
-                    'Historical_Negative_Rate': 'Historical % of Negative Returns',
-                    'Volatility_Pct': 'Return Volatility (%)'
-                }, inplace=True)
-
-                # Display results with intuitive explanations
-                if len(min_safe_spreads_df) > 0:
-                    st.success(f"Found minimum safe spreads for {len(min_safe_spreads_df)} categories")
-
-                    # Get an example row for demonstration
-                    example_row = min_safe_spreads_df.iloc[0]
-                    
-                    st.info(f"""
-                    ### How to Interpret This Table:
-                    For your selected risk tolerance of **{safety_threshold*100:.0f}% negative returns**, the table shows the **tightest (lowest) spread** historically required to meet or better this risk level.
-
-                    **Example: {example_row['Category']}**
-                    - **Spread Threshold: {example_row['Spread Threshold (bps)']:.1f} bps** - This is the minimum spread level where historical negative returns were ≤ {safety_threshold*100:.0f}%
-                    - **Spread Category: {example_row['Spread Category']}** - The spread category that meets your risk tolerance
-                    - **Historical % of Negative Returns: {example_row['Historical % of Negative Returns']}** - Shows the ratio and calculated percentage of negative observations at this spread level
-                    - **Negative Return Observations: {example_row['Negative Return Observations']}** - Number of historical periods with negative returns at this spread level
-                    - **Total Observations: {example_row['Total Observations']}** - Total number of historical periods used to calculate these statistics
-                    - **Avg 1Y Return: {example_row['Avg 1Y Return (%)']:.2f}%** - The average 1-year excess return when spreads were at this level
-                    - **Return Volatility: {example_row['Return Volatility (%)']:.2f}%** - The standard deviation of returns at this spread level
-
-                    **Key Insight:** Spreads below {example_row['Spread Threshold (bps)']:.1f} bps for {example_row['Category']} historically resulted in negative returns more than {safety_threshold*100:.0f}% of the time, exceeding your risk tolerance.
-                    """)
-
-                    st.dataframe(min_safe_spreads_df, use_container_width=True)
-
-                    csv_safe_spreads = min_safe_spreads_df.to_csv(index=False)
-                    st.download_button(
-                        label="Download Minimum Safe Spread Thresholds as CSV",
-                        data=csv_safe_spreads,
-                        file_name="minimum_safe_spreads.csv",
-                        mime="text/csv"
-                    )
-                else:
-                    st.warning("No categories found meeting your risk tolerance. Consider increasing your threshold or reducing the minimum observations.")
-
-                # Simplified Calculation Methodology
-                st.info(f"""
-                ### Calculation Methodology:
-                - Grouped historical credit spreads into standard categories (<100, 100-150, 150-200, 200-250, 250-300, 300-400, 400-600, 600-800, 800+ bps).
-                - Calculated the percentage of negative 1-year returns historically observed for each spread category.
-                - For each category, identified the **tightest spread category** where historical negative returns meet or fall below your selected risk tolerance ({safety_threshold*100:.0f}%).
-                - Only considered spread categories with at least {min_obs} observations.
-                """)
-                    
-            except Exception as e:
-                st.error(f"Error calculating minimum safe spreads: {str(e)}")
-                import traceback
-                st.write("Full error traceback:")
-                st.code(traceback.format_exc())
-                st.write("Debug info:")
-                st.write(f"Data shape: {combined_df.shape}")
-                st.write(f"Categories: {combined_df['Category'].unique()}")
-                st.write(f"Spread range: {combined_df['Spread'].min():.4f} to {combined_df['Spread'].max():.4f}")
 
 else:
     st.info("Please upload an Excel file to begin the analysis.")
