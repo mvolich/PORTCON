@@ -279,8 +279,10 @@ if uploaded_file is not None:
         df_metadata = df_metadata_raw[df_metadata_raw['Name'].isin(available_names)].set_index('Name')
         df_metadata = df_metadata.loc[df_pct_change.columns]
         
-        # Force float types on binary flags
-        df_metadata[['Is_AT1', 'Is_EM', 'Is_Non_IG','Is_Hybrid']] = df_metadata[['Is_AT1', 'Is_EM', 'Is_Non_IG','Is_Hybrid']].astype(float)
+        # Force float types on binary flags with error handling
+        for col in ['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']:
+            if col in df_metadata.columns:
+                df_metadata[col] = pd.to_numeric(df_metadata[col], errors='coerce').fillna(0)
         
         # Set US T-Bills flags to 0 if it exists in the data
         if 'US T-Bills' in df_metadata.index:
@@ -298,13 +300,28 @@ if uploaded_file is not None:
         w = cp.Variable(n)
         
         metadata = metadata.loc[idx]
-        rating = metadata['Rating_Num'].values
-        duration = metadata['Duration'].values
-        is_at1 = metadata['Is_AT1'].values.astype(float)
-        is_em = metadata['Is_EM'].values.astype(float)
-        is_non_ig = metadata['Is_Non_IG'].values.astype(float)
-        is_hybrid = metadata['Is_Hybrid'].values.astype(float)
-        yields = metadata['Current Yield Hdgd'].values / 100
+        
+        # Convert and clean numeric columns with proper error handling
+        try:
+            rating = pd.to_numeric(metadata['Rating_Num'], errors='coerce').fillna(1).values
+        except:
+            rating = np.ones(len(idx))
+            
+        try:
+            duration = pd.to_numeric(metadata['Duration'], errors='coerce').fillna(0).values
+        except:
+            duration = np.zeros(len(idx))
+            
+        try:
+            yields = pd.to_numeric(metadata['Current Yield Hdgd'], errors='coerce').fillna(0).values / 100
+        except:
+            yields = np.zeros(len(idx))
+        
+        # Convert binary flags to float
+        is_at1 = pd.to_numeric(metadata['Is_AT1'], errors='coerce').fillna(0).values.astype(float)
+        is_em = pd.to_numeric(metadata['Is_EM'], errors='coerce').fillna(0).values.astype(float)
+        is_non_ig = pd.to_numeric(metadata['Is_Non_IG'], errors='coerce').fillna(0).values.astype(float)
+        is_hybrid = pd.to_numeric(metadata['Is_Hybrid'], errors='coerce').fillna(0).values.astype(float)
         
         constraints_list = [
             cp.sum(w) == 1,
@@ -329,10 +346,14 @@ if uploaded_file is not None:
         constraints_list.append(mu @ w >= target_return)
         
         problem = cp.Problem(cp.Minimize(cp.quad_form(w, cov)), constraints_list)
-        problem.solve()
+        
+        try:
+            problem.solve()
+        except Exception as e:
+            raise ValueError(f"Optimization solver error: {str(e)}")
         
         if w.value is None:
-            raise ValueError("No solution found")
+            raise ValueError("No solution found - constraints may be infeasible")
         
         weights = pd.Series(w.value, index=idx).round(4)
         weights = weights[weights > 0.001].sort_values(ascending=False)
@@ -401,6 +422,12 @@ if uploaded_file is not None:
     
     # Process data
     df_pct_change, df_metadata = process_data(df_raw, df_metadata_raw)
+    
+    # Debug: Check data types and missing values
+    st.write("Debug Info:")
+    st.write("Metadata columns:", df_metadata.columns.tolist())
+    st.write("Metadata dtypes:", df_metadata.dtypes.to_dict())
+    st.write("Missing values in metadata:", df_metadata.isnull().sum().to_dict())
     
     # Calculate risk-free rate
     rf_rate_hist = df_pct_change['US T-Bills'].mean() * 252
