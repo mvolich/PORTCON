@@ -312,91 +312,61 @@ if uploaded_file is not None:
         
         metadata = metadata.loc[idx]
         
-        # Debug: Check metadata before conversion
-        st.write(f"Debug - Metadata for {fund_name}:")
-        st.write("Metadata shape:", metadata.shape)
-        st.write("Metadata columns:", metadata.columns.tolist())
-        st.write("Metadata dtypes:", metadata.dtypes.to_dict())
-        
         # Convert and clean numeric columns with proper error handling
         try:
             rating = pd.to_numeric(metadata['Rating_Num'], errors='coerce').fillna(1).values
-            st.write("Rating conversion successful, shape:", rating.shape)
         except Exception as e:
-            st.write(f"Rating conversion failed: {e}")
             rating = np.ones(len(idx))
             
         try:
             duration = pd.to_numeric(metadata['Duration'], errors='coerce').fillna(0).values
-            st.write("Duration conversion successful, shape:", duration.shape)
         except Exception as e:
-            st.write(f"Duration conversion failed: {e}")
             duration = np.zeros(len(idx))
             
         try:
             yields = pd.to_numeric(metadata['Current Yield Hdgd'], errors='coerce').fillna(0).values / 100
-            st.write("Yields conversion successful, shape:", yields.shape)
         except Exception as e:
-            st.write(f"Yields conversion failed: {e}")
             yields = np.zeros(len(idx))
         
-        # Convert binary flags to float with detailed error handling
+        # Convert binary flags to float with error handling
         try:
             is_at1 = pd.to_numeric(metadata['Is_AT1'], errors='coerce').fillna(0).values.astype(float)
-            st.write("AT1 conversion successful, shape:", is_at1.shape)
         except Exception as e:
-            st.write(f"AT1 conversion failed: {e}")
             is_at1 = np.zeros(len(idx))
             
         try:
             is_em = pd.to_numeric(metadata['Is_EM'], errors='coerce').fillna(0).values.astype(float)
-            st.write("EM conversion successful, shape:", is_em.shape)
         except Exception as e:
-            st.write(f"EM conversion failed: {e}")
             is_em = np.zeros(len(idx))
             
         try:
             is_non_ig = pd.to_numeric(metadata['Is_Non_IG'], errors='coerce').fillna(0).values.astype(float)
-            st.write("Non-IG conversion successful, shape:", is_non_ig.shape)
         except Exception as e:
-            st.write(f"Non-IG conversion failed: {e}")
             is_non_ig = np.zeros(len(idx))
             
         try:
             is_hybrid = pd.to_numeric(metadata['Is_Hybrid'], errors='coerce').fillna(0).values.astype(float)
-            st.write("Hybrid conversion successful, shape:", is_hybrid.shape)
         except Exception as e:
-            st.write(f"Hybrid conversion failed: {e}")
             is_hybrid = np.zeros(len(idx))
-         
-         # Ensure all arrays are numpy arrays with correct dtypes
-         st.write("Final array types:")
-         st.write(f"rating: {type(rating)}, dtype: {rating.dtype}")
-         st.write(f"duration: {type(duration)}, dtype: {duration.dtype}")
-         st.write(f"yields: {type(yields)}, dtype: {yields.dtype}")
-         st.write(f"is_at1: {type(is_at1)}, dtype: {is_at1.dtype}")
-         st.write(f"is_em: {type(is_em)}, dtype: {is_em.dtype}")
-         st.write(f"is_non_ig: {type(is_non_ig)}, dtype: {is_non_ig.dtype}")
-         st.write(f"is_hybrid: {type(is_hybrid)}, dtype: {is_hybrid.dtype}")
-         
-         # Convert all to numpy arrays with float64 dtype
-         rating = np.array(rating, dtype=np.float64)
-         duration = np.array(duration, dtype=np.float64)
-         yields = np.array(yields, dtype=np.float64)
-         is_at1 = np.array(is_at1, dtype=np.float64)
-         is_em = np.array(is_em, dtype=np.float64)
-         is_non_ig = np.array(is_non_ig, dtype=np.float64)
-         is_hybrid = np.array(is_hybrid, dtype=np.float64)
-         
-         constraints_list = [
-             cp.sum(w) == 1,
-             w >= 0,
-             is_non_ig @ w <= constraints['max_non_ig'],
-             is_em @ w <= constraints['max_em'],
-             is_at1 @ w <= constraints['max_at1'],
-             is_hybrid @ w <= constraints['max_hybrid'],
-             rating @ w >= constraints['min_rating']
-         ]
+        
+        # Convert all to numpy arrays with float64 dtype
+        rating = np.array(rating, dtype=np.float64)
+        duration = np.array(duration, dtype=np.float64)
+        yields = np.array(yields, dtype=np.float64)
+        is_at1 = np.array(is_at1, dtype=np.float64)
+        is_em = np.array(is_em, dtype=np.float64)
+        is_non_ig = np.array(is_non_ig, dtype=np.float64)
+        is_hybrid = np.array(is_hybrid, dtype=np.float64)
+        
+        constraints_list = [
+            cp.sum(w) == 1,
+            w >= 0,
+            is_non_ig @ w <= constraints['max_non_ig'],
+            is_em @ w <= constraints['max_em'],
+            is_at1 @ w <= constraints['max_at1'],
+            is_hybrid @ w <= constraints['max_hybrid'],
+            rating @ w >= constraints['min_rating']
+        ]
         
         # Initialize tbill_index variable
         tbill_index = None
@@ -487,13 +457,6 @@ if uploaded_file is not None:
     
     # Process data
     df_pct_change, df_metadata = process_data(df_raw, df_metadata_raw)
-    
-    # Debug: Check data types after processing
-    st.write("Debug Info:")
-    st.write("Metadata columns:", df_metadata.columns.tolist())
-    st.write("Metadata dtypes:", df_metadata.dtypes.to_dict())
-    st.write("Sample metadata values:")
-    st.write(df_metadata.head())
     
     # Calculate risk-free rate
     rf_rate_hist = df_pct_change['US T-Bills'].mean() * 252
