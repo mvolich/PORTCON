@@ -368,16 +368,35 @@ if uploaded_file is not None:
         except Exception as e:
             st.write(f"Hybrid conversion failed: {e}")
             is_hybrid = np.zeros(len(idx))
-        
-        constraints_list = [
-            cp.sum(w) == 1,
-            w >= 0,
-            is_non_ig @ w <= constraints['max_non_ig'],
-            is_em @ w <= constraints['max_em'],
-            is_at1 @ w <= constraints['max_at1'],
-            is_hybrid @ w <= constraints['max_hybrid'],
-            rating @ w >= constraints['min_rating']
-        ]
+         
+         # Ensure all arrays are numpy arrays with correct dtypes
+         st.write("Final array types:")
+         st.write(f"rating: {type(rating)}, dtype: {rating.dtype}")
+         st.write(f"duration: {type(duration)}, dtype: {duration.dtype}")
+         st.write(f"yields: {type(yields)}, dtype: {yields.dtype}")
+         st.write(f"is_at1: {type(is_at1)}, dtype: {is_at1.dtype}")
+         st.write(f"is_em: {type(is_em)}, dtype: {is_em.dtype}")
+         st.write(f"is_non_ig: {type(is_non_ig)}, dtype: {is_non_ig.dtype}")
+         st.write(f"is_hybrid: {type(is_hybrid)}, dtype: {is_hybrid.dtype}")
+         
+         # Convert all to numpy arrays with float64 dtype
+         rating = np.array(rating, dtype=np.float64)
+         duration = np.array(duration, dtype=np.float64)
+         yields = np.array(yields, dtype=np.float64)
+         is_at1 = np.array(is_at1, dtype=np.float64)
+         is_em = np.array(is_em, dtype=np.float64)
+         is_non_ig = np.array(is_non_ig, dtype=np.float64)
+         is_hybrid = np.array(is_hybrid, dtype=np.float64)
+         
+         constraints_list = [
+             cp.sum(w) == 1,
+             w >= 0,
+             is_non_ig @ w <= constraints['max_non_ig'],
+             is_em @ w <= constraints['max_em'],
+             is_at1 @ w <= constraints['max_at1'],
+             is_hybrid @ w <= constraints['max_hybrid'],
+             rating @ w >= constraints['min_rating']
+         ]
         
         # Initialize tbill_index variable
         tbill_index = None
