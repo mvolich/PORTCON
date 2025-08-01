@@ -624,31 +624,41 @@ if uploaded_file is not None:
         
         st.write(f"DEBUG: Processing {len(df_metrics_display.index)} rows...")
         
+        # CRITICAL FIX: Replace extremely small values (close to 0) with exactly 0
+        st.write("DEBUG: Applying threshold fix for extremely small values...")
+        threshold = 1e-10  # define a sensible threshold
+        for row in percent_cols:
+            if row in df_metrics_display.index:
+                st.write(f"DEBUG: Applying threshold fix to {row}...")
+                df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
+                    lambda x: 0.0 if abs(x) < threshold else x
+                )
+                st.write(f"DEBUG: ✓ Threshold fix applied to {row}")
+        
         for i, row in enumerate(df_metrics_display.index):
-            st.write(f"DEBUG: Processing row {i+1}/{len(df_metrics_display.index)}: {row}")
-            st.write(f"DEBUG: Row dtype before processing: {df_metrics_display.loc[row].dtype}")
-            st.write(f"DEBUG: Row sample values: {df_metrics_display.loc[row].head().tolist()}")
-            
-            try:
-                if row in percent_cols:
-                    st.write(f"DEBUG: Converting {row} to percentage...")
-                    # Row should now be numeric, multiply by 100
-                    df_metrics_display.loc[row] = df_metrics_display.loc[row] * 100
-                    df_metrics_display.loc[row] = df_metrics_display.loc[row].round(2)
-                    st.write(f"DEBUG: ✓ {row} converted successfully")
-                elif row == 'Avg Rating':
-                    st.write(f"DEBUG: Converting {row} to rating scale...")
-                    # Row should now be numeric, apply rating conversion
-                    df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
-                        lambda x: inverse_rating_scale.get(int(round(x)), f"{x:.2f}")
-                    )
-                    st.write(f"DEBUG: ✓ {row} converted successfully")
-                else:
-                    st.write(f"DEBUG: Skipping {row} (no conversion needed)")
-            except Exception as e:
-                st.write(f"DEBUG: ✗ Error processing {row}: {e}")
-                st.write(f"DEBUG: Error type: {type(e)}")
-                raise
+             st.write(f"DEBUG: Processing row {i+1}/{len(df_metrics_display.index)}: {row}")
+             st.write(f"DEBUG: Row dtype before processing: {df_metrics_display.loc[row].dtype}")
+             st.write(f"DEBUG: Row sample values: {df_metrics_display.loc[row].head().tolist()}")
+             
+             try:
+                 if row in percent_cols:
+                     st.write(f"DEBUG: Converting {row} to percentage...")
+                     # Now safely convert to percentages after threshold fix
+                     df_metrics_display.loc[row] = (df_metrics_display.loc[row] * 100).round(2)
+                     st.write(f"DEBUG: ✓ {row} converted successfully")
+                 elif row == 'Avg Rating':
+                     st.write(f"DEBUG: Converting {row} to rating scale...")
+                     # Row should now be numeric, apply rating conversion
+                     df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
+                         lambda x: inverse_rating_scale.get(int(round(x)), f"{x:.2f}")
+                     )
+                     st.write(f"DEBUG: ✓ {row} converted successfully")
+                 else:
+                     st.write(f"DEBUG: Skipping {row} (no conversion needed)")
+             except Exception as e:
+                 st.write(f"DEBUG: ✗ Error processing {row}: {e}")
+                 st.write(f"DEBUG: Error type: {type(e)}")
+                 raise
         
         st.dataframe(df_metrics_display, use_container_width=True)
         
