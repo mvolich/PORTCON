@@ -554,22 +554,47 @@ if uploaded_file is not None:
         # Metrics table
         st.subheader("Portfolio Metrics")
         
-        # Format metrics for display
+        # Format metrics for display with debugging
+        st.write("DEBUG: Starting metrics formatting...")
+        st.write(f"DEBUG: df_metrics shape: {df_metrics.shape}")
+        st.write(f"DEBUG: df_metrics index: {df_metrics.index.tolist()}")
+        st.write(f"DEBUG: df_metrics dtypes: {df_metrics.dtypes}")
+        
         df_metrics_display = df_metrics.copy()
         percent_cols = ['Expected Return', 'Expected Volatility', 'EM Exposure', 'AT1 Exposure',
                        'Non-IG Exposure', 'Hybrid Exposure', 'T-Bill Exposure', 'Avg Yield']
         
-        for row in df_metrics_display.index:
-            if row in percent_cols:
-                # Convert to numeric first to avoid dtype issues
-                df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0) * 100
-                df_metrics_display.loc[row] = df_metrics_display.loc[row].round(2)
-            elif row == 'Avg Rating':
-                # Convert to numeric first to avoid dtype issues
-                df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
-                df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
-                    lambda x: inverse_rating_scale.get(int(round(x)), f"{x:.2f}")
-                )
+        st.write(f"DEBUG: Processing {len(df_metrics_display.index)} rows...")
+        
+        for i, row in enumerate(df_metrics_display.index):
+            st.write(f"DEBUG: Processing row {i+1}/{len(df_metrics_display.index)}: {row}")
+            st.write(f"DEBUG: Row dtype before processing: {df_metrics_display.loc[row].dtype}")
+            st.write(f"DEBUG: Row sample values: {df_metrics_display.loc[row].head().tolist()}")
+            
+            try:
+                if row in percent_cols:
+                    st.write(f"DEBUG: Converting {row} to percentage...")
+                    # Convert to numeric first to avoid dtype issues
+                    row_data = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
+                    st.write(f"DEBUG: Row data after conversion: {row_data.head().tolist()}")
+                    df_metrics_display.loc[row] = row_data * 100
+                    df_metrics_display.loc[row] = df_metrics_display.loc[row].round(2)
+                    st.write(f"DEBUG: ✓ {row} converted successfully")
+                elif row == 'Avg Rating':
+                    st.write(f"DEBUG: Converting {row} to rating scale...")
+                    # Convert to numeric first to avoid dtype issues
+                    row_data = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
+                    st.write(f"DEBUG: Row data after conversion: {row_data.head().tolist()}")
+                    df_metrics_display.loc[row] = row_data.apply(
+                        lambda x: inverse_rating_scale.get(int(round(x)), f"{x:.2f}")
+                    )
+                    st.write(f"DEBUG: ✓ {row} converted successfully")
+                else:
+                    st.write(f"DEBUG: Skipping {row} (no conversion needed)")
+            except Exception as e:
+                st.write(f"DEBUG: ✗ Error processing {row}: {e}")
+                st.write(f"DEBUG: Error type: {type(e)}")
+                raise
         
         st.dataframe(df_metrics_display, use_container_width=True)
         
