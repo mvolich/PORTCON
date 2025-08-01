@@ -630,10 +630,11 @@ if uploaded_file is not None:
         for row in percent_cols:
             if row in df_metrics_display.index:
                 st.write(f"DEBUG: Applying threshold fix to {row}...")
-                df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
-                    lambda x: 0.0 if abs(x) < threshold else x
-                )
-                st.write(f"DEBUG: ✓ Threshold fix applied to {row}")
+                # Apply threshold fix and immediately convert to numeric to maintain dtype
+                row_data = df_metrics_display.loc[row]
+                fixed_data = row_data.apply(lambda x: 0.0 if abs(x) < threshold else x)
+                df_metrics_display.loc[row] = pd.to_numeric(fixed_data, errors='coerce').fillna(0.0)
+                st.write(f"DEBUG: ✓ Threshold fix applied to {row} with dtype: {df_metrics_display.loc[row].dtype}")
         
         # CRITICAL STEP: Explicitly force dtype conversion to numeric after threshold fix
         st.write("DEBUG: Explicitly forcing numeric conversion after threshold fix...")
@@ -641,7 +642,7 @@ if uploaded_file is not None:
             if row in df_metrics_display.index:
                 st.write(f"DEBUG: Forcing numeric conversion for {row}...")
                 df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0.0)
-                st.write(f"DEBUG: ✓ Numeric conversion completed for {row}")
+                st.write(f"DEBUG: ✓ Numeric conversion completed for {row} with dtype: {df_metrics_display.loc[row].dtype}")
         
         for i, row in enumerate(df_metrics_display.index):
              st.write(f"DEBUG: Processing row {i+1}/{len(df_metrics_display.index)}: {row}")
