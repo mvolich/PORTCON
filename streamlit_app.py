@@ -271,13 +271,21 @@ if uploaded_file is not None:
         # Calculate returns
         df_pct_change = df_common.pct_change().dropna()
         
-        # Align metadata
+        # Align metadata - exactly as original file
         available_names = df_pct_change.columns.intersection(df_metadata_raw['Name'])
         df_pct_change = df_pct_change[available_names]
         df_metadata = df_metadata_raw[df_metadata_raw['Name'].isin(available_names)].set_index('Name')
+        
+        # Ensure correct ordering explicitly (as original file)
         df_metadata = df_metadata.loc[df_pct_change.columns]
         
-        # Force float types on binary flags - using the working approach from rubrics_mvo_final.py
+        # Add this critical assertion back
+        assert all(df_pct_change.columns == df_metadata.index), "Mismatch in index order"
+        
+        # Explicit final alignment (original file logic)
+        df_metadata = df_metadata.loc[df_pct_change.columns]
+        
+        # Explicit numeric conversion (exactly as original file)
         df_metadata[['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']] = df_metadata[['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']].astype(float)
         df_metadata.loc['US T-Bills', ['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']] = 0
         
@@ -302,16 +310,16 @@ if uploaded_file is not None:
         
         metadata = metadata.loc[idx]
         
-        # Extract numeric columns - data is already properly converted in process_data
+        # Extract numeric columns - exactly as original file
         rating = metadata['Rating_Num'].values
         duration = metadata['Duration'].values
         yields = metadata['Current Yield Hdgd'].values / 100
         
-        # Extract binary flags - already converted to float in process_data
-        is_at1 = metadata['Is_AT1'].values
-        is_em = metadata['Is_EM'].values
-        is_non_ig = metadata['Is_Non_IG'].values
-        is_hybrid = metadata['Is_Hybrid'].values
+        # Extract binary flags with explicit float casting (as original file)
+        is_at1 = metadata['Is_AT1'].values.astype(float)
+        is_em = metadata['Is_EM'].values.astype(float)
+        is_non_ig = metadata['Is_Non_IG'].values.astype(float)
+        is_hybrid = metadata['Is_Hybrid'].values.astype(float)
         
         constraints_list = [
             cp.sum(w) == 1,
