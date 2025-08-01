@@ -318,7 +318,18 @@ if uploaded_file is not None:
         st.write("Returns after processing:", returns.head())
         st.write("Metadata dtypes:", metadata.dtypes)
         
-        # Additional debugging for the specific arrays being used in optimization
+        # Extract numeric columns - exactly as original file (no explicit casting to avoid NaN issues)
+        rating = metadata['Rating_Num'].values
+        duration = metadata['Duration'].values
+        yields = metadata['Current Yield Hdgd'].values / 100
+        
+        # Extract binary flags - exactly as original file (no explicit casting to avoid NaN issues)
+        is_at1 = metadata['Is_AT1'].values
+        is_em = metadata['Is_EM'].values
+        is_non_ig = metadata['Is_Non_IG'].values
+        is_hybrid = metadata['Is_Hybrid'].values
+        
+        # Additional debugging for the specific arrays being used in optimization (AFTER they're defined)
         st.write("Rating array type:", type(rating))
         st.write("Rating array dtype:", rating.dtype)
         st.write("Rating array shape:", rating.shape)
@@ -338,17 +349,6 @@ if uploaded_file is not None:
         st.write("Is_AT1 array dtype:", is_at1.dtype)
         st.write("Is_AT1 array shape:", is_at1.shape)
         st.write("Is_AT1 array sample:", is_at1[:5])
-        
-        # Extract numeric columns - exactly as original file (no explicit casting to avoid NaN issues)
-        rating = metadata['Rating_Num'].values
-        duration = metadata['Duration'].values
-        yields = metadata['Current Yield Hdgd'].values / 100
-        
-        # Extract binary flags - exactly as original file (no explicit casting to avoid NaN issues)
-        is_at1 = metadata['Is_AT1'].values
-        is_em = metadata['Is_EM'].values
-        is_non_ig = metadata['Is_Non_IG'].values
-        is_hybrid = metadata['Is_Hybrid'].values
         
         # Create constraints with debugging
         st.write("Creating constraints step by step...")
