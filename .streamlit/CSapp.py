@@ -387,11 +387,16 @@ def value_to_color(val, vmin=-20, vmax=30):
 def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
     """Calculate minimum safe spread thresholds for each category."""
     df = combined_df.copy()
-    spread_bin_size = 0.005  # Increased from 0.0025 to 0.005 (50 bps instead of 25 bps)
-    df['Spread Bin'] = (np.floor(df['Spread'] / spread_bin_size) * spread_bin_size).round(4)
-
-    # Group and calculate negative return probability
-    grouped_stats = df.groupby(['Category', 'Spread Bin']).agg(
+    
+    # Use existing spread categories instead of narrow bins for better observation counts
+    df['Spread Category'] = df['Spread'].apply(categorize_spread)
+    
+    # Define spread category order from tightest to widest
+    spread_order = ['<100', '100-150', '150-200', '200-250',
+                    '250-300', '300-400', '400-600', '600-800', '800+']
+    
+    # Group and calculate negative return probability by spread category
+    grouped_stats = df.groupby(['Category', 'Spread Category']).agg(
         avg_return=('1 Yr Ahead ER', 'mean'),
         std_return=('1 Yr Ahead ER', 'std'),
         percent_negative=('1 Yr Ahead ER', lambda x: (x < 0).mean()),
@@ -403,11 +408,17 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
 
     results = []
 
-    # For each category, sort from lowest spread bin upwards and find the threshold bin
+    # For each category, sort from tightest to widest spread category and find the threshold
     for category in reliable_bins['Category'].unique():
-        category_df = reliable_bins[reliable_bins['Category'] == category].sort_values('Spread Bin')
+        category_df = reliable_bins[reliable_bins['Category'] == category]
+        
+        # Sort by spread category order (tightest to widest)
+        category_df['Spread_Category_Order'] = category_df['Spread Category'].map(
+            {cat: i for i, cat in enumerate(spread_order)}
+        )
+        category_df = category_df.sort_values('Spread_Category_Order')
 
-        # Find first bin where the historical negative percentage drops to or below threshold
+        # Find first category where the historical negative percentage drops to or below threshold
         safe_bins = category_df[category_df['percent_negative'] <= safety_threshold]
 
         if not safe_bins.empty:
@@ -416,9 +427,21 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
             negative_obs = int(threshold_bin['percent_negative'] * threshold_bin['observations'])
             negative_percentage = (negative_obs / threshold_bin['observations']) * 100
             
+            # Convert spread category to approximate basis points for display
+            spread_category = threshold_bin['Spread Category']
+            if spread_category == '<100':
+                spread_bps = 50  # midpoint of <100
+            elif spread_category == '800+':
+                spread_bps = 900  # representative value for 800+
+            else:
+                # Extract numbers from category like "100-150" -> 125
+                parts = spread_category.split('-')
+                spread_bps = (int(parts[0]) + int(parts[1])) / 2
+            
             results.append({
                 'Category': category,
-                'Min_Safe_Spread_Bps': threshold_bin['Spread Bin'] * 100,  # Convert to basis points
+                'Min_Safe_Spread_Bps': spread_bps,
+                'Spread_Category': spread_category,
                 'Avg_Return_Pct': threshold_bin['avg_return'],  # Already in percentage format
                 'Negative_Return_Observations': negative_obs,
                 'Total_Observations': threshold_bin['observations'],
@@ -733,6 +756,7 @@ if uploaded_file is not None:
                 # Rename columns clearly for user interpretability
                 min_safe_spreads_df.rename(columns={
                     'Min_Safe_Spread_Bps': 'Spread Threshold (bps)',
+                    'Spread_Category': 'Spread Category',
                     'Avg_Return_Pct': 'Avg 1Y Return (%)',
                     'Negative_Return_Observations': 'Negative Return Observations',
                     'Total_Observations': 'Total Observations',
@@ -753,6 +777,7 @@ if uploaded_file is not None:
 
                     **Example: {example_row['Category']}**
                     - **Spread Threshold: {example_row['Spread Threshold (bps)']:.1f} bps** - This is the minimum spread level where historical negative returns were ≤ {safety_threshold*100:.0f}%
+                    - **Spread Category: {example_row['Spread Category']}** - The spread category that meets your risk tolerance
                     - **Historical % of Negative Returns: {example_row['Historical % of Negative Returns']}** - Shows the ratio and calculated percentage of negative observations at this spread level
                     - **Negative Return Observations: {example_row['Negative Return Observations']}** - Number of historical periods with negative returns at this spread level
                     - **Total Observations: {example_row['Total Observations']}** - Total number of historical periods used to calculate these statistics
@@ -777,10 +802,10 @@ if uploaded_file is not None:
                 # Simplified Calculation Methodology
                 st.info(f"""
                 ### Calculation Methodology:
-                - Grouped historical credit spreads into intervals of 50 basis points (bps).
-                - Calculated the percentage of negative 1-year returns historically observed for each bin.
-                - For each category, identified the **lowest spread** where historical negative returns meet or fall below your selected risk tolerance ({safety_threshold*100:.0f}%).
-                - Only considered spread bins with at least {min_obs} observations.
+                - Grouped historical credit spreads into standard categories (<100, 100-150, 150-200, 200-250, 250-300, 300-400, 400-600, 600-800, 800+ bps).
+                - Calculated the percentage of negative 1-year returns historically observed for each spread category.
+                - For each category, identified the **tightest spread category** where historical negative returns meet or fall below your selected risk tolerance ({safety_threshold*100:.0f}%).
+                - Only considered spread categories with at least {min_obs} observations.
                 """)
                     
             except Exception as e:
