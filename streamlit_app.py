@@ -330,15 +330,59 @@ if uploaded_file is not None:
         is_non_ig = metadata['Is_Non_IG'].values.astype(float)
         is_hybrid = metadata['Is_Hybrid'].values.astype(float)
         
-        constraints_list = [
-            cp.sum(w) == 1,
-            w >= 0,
-            is_non_ig @ w <= constraints['max_non_ig'],
-            is_em @ w <= constraints['max_em'],
-            is_at1 @ w <= constraints['max_at1'],
-            is_hybrid @ w <= constraints['max_hybrid'],
-            rating @ w >= constraints['min_rating']
-        ]
+        # Debug array types and shapes
+        st.write("Array types after conversion:")
+        st.write(f"rating dtype: {rating.dtype}, shape: {rating.shape}")
+        st.write(f"duration dtype: {duration.dtype}, shape: {duration.shape}")
+        st.write(f"yields dtype: {yields.dtype}, shape: {yields.shape}")
+        st.write(f"is_at1 dtype: {is_at1.dtype}, shape: {is_at1.shape}")
+        st.write(f"is_em dtype: {is_em.dtype}, shape: {is_em.shape}")
+        st.write(f"is_non_ig dtype: {is_non_ig.dtype}, shape: {is_non_ig.shape}")
+        st.write(f"is_hybrid dtype: {is_hybrid.dtype}, shape: {is_hybrid.shape}")
+        
+        # Debug constraint values
+        st.write("Constraint values:")
+        st.write(f"max_non_ig: {constraints['max_non_ig']} (type: {type(constraints['max_non_ig'])})")
+        st.write(f"max_em: {constraints['max_em']} (type: {type(constraints['max_em'])})")
+        st.write(f"max_at1: {constraints['max_at1']} (type: {type(constraints['max_at1'])})")
+        st.write(f"max_hybrid: {constraints['max_hybrid']} (type: {type(constraints['max_hybrid'])})")
+        st.write(f"min_rating: {constraints['min_rating']} (type: {type(constraints['min_rating'])})")
+        
+        # Debug constraint creation step by step
+        st.write("Creating constraints step by step...")
+        
+        constraints_list = [cp.sum(w) == 1, w >= 0]
+        st.write("✓ Basic constraints added")
+        
+        try:
+            constraints_list.append(is_non_ig @ w <= constraints['max_non_ig'])
+            st.write("✓ Non-IG constraint added")
+        except Exception as e:
+            st.write(f"✗ Error in Non-IG constraint: {e}")
+            
+        try:
+            constraints_list.append(is_em @ w <= constraints['max_em'])
+            st.write("✓ EM constraint added")
+        except Exception as e:
+            st.write(f"✗ Error in EM constraint: {e}")
+            
+        try:
+            constraints_list.append(is_at1 @ w <= constraints['max_at1'])
+            st.write("✓ AT1 constraint added")
+        except Exception as e:
+            st.write(f"✗ Error in AT1 constraint: {e}")
+            
+        try:
+            constraints_list.append(is_hybrid @ w <= constraints['max_hybrid'])
+            st.write("✓ Hybrid constraint added")
+        except Exception as e:
+            st.write(f"✗ Error in Hybrid constraint: {e}")
+            
+        try:
+            constraints_list.append(rating @ w >= constraints['min_rating'])
+            st.write("✓ Rating constraint added")
+        except Exception as e:
+            st.write(f"✗ Error in Rating constraint: {e}")
         
         # Initialize tbill_index variable
         tbill_index = None
