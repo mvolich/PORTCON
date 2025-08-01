@@ -81,7 +81,7 @@ def load_logo():
         if response.status_code == 200:
             image = Image.open(io.BytesIO(response.content))
             return image
-    except:
+    except (requests.RequestException, IOError, Exception):
         pass
     return None
 
@@ -281,7 +281,10 @@ if uploaded_file is not None:
         
         # Force float types on binary flags
         df_metadata[['Is_AT1', 'Is_EM', 'Is_Non_IG','Is_Hybrid']] = df_metadata[['Is_AT1', 'Is_EM', 'Is_Non_IG','Is_Hybrid']].astype(float)
-        df_metadata.loc['US T-Bills', ['Is_AT1', 'Is_EM', 'Is_Non_IG','Is_Hybrid']] = 0
+        
+        # Set US T-Bills flags to 0 if it exists in the data
+        if 'US T-Bills' in df_metadata.index:
+            df_metadata.loc['US T-Bills', ['Is_AT1', 'Is_EM', 'Is_Non_IG','Is_Hybrid']] = 0
         
         return df_pct_change, df_metadata
     
@@ -313,6 +316,9 @@ if uploaded_file is not None:
             rating @ w >= constraints['min_rating']
         ]
         
+        # Initialize tbill_index variable
+        tbill_index = None
+        
         if constraints.get('max_tbill') is not None:
             tbill_index = idx.index('US T-Bills')
             constraints_list.append(w[tbill_index] <= constraints['max_tbill'])
@@ -332,7 +338,7 @@ if uploaded_file is not None:
         weights = weights[weights > 0.001].sort_values(ascending=False)
         
         rating_avg = (rating @ w.value).item()
-        tbill_weight = w.value[tbill_index].item() if 'max_tbill' in constraints else 0.0
+        tbill_weight = w.value[tbill_index].item() if tbill_index is not None else 0.0
         
         metrics = {
             'Expected Return': (mu @ w.value).item(),
