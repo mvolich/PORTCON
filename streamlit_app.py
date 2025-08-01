@@ -621,7 +621,7 @@ if uploaded_file is not None:
         st.dataframe(df_metrics_display, use_container_width=True)
         
         # Constraints Budget Usage
-        st.subheader("Constraints Budget Usage")
+        st.subheader("🔒 Constraints Budget Usage")
         
         # Calculate constraint usage for each portfolio
         constraint_usage = {}
@@ -633,32 +633,43 @@ if uploaded_file is not None:
             weights = df_weights[portfolio]
             
             # Calculate constraint usage
-            usage['Non-IG Usage'] = (weights * df_metadata.loc[weights.index, 'Is_Non_IG']).sum() / constraints['max_non_ig'] * 100
-            usage['EM Usage'] = (weights * df_metadata.loc[weights.index, 'Is_EM']).sum() / constraints['max_em'] * 100
-            usage['AT1 Usage'] = (weights * df_metadata.loc[weights.index, 'Is_AT1']).sum() / constraints['max_at1'] * 100
-            usage['Hybrid Usage'] = (weights * df_metadata.loc[weights.index, 'Is_Hybrid']).sum() / constraints['max_hybrid'] * 100
+            usage['AT1 (≤15%)'] = (weights * df_metadata.loc[weights.index, 'Is_AT1']).sum() / constraints['max_at1'] * 100
+            usage['EM (≤30%)'] = (weights * df_metadata.loc[weights.index, 'Is_EM']).sum() / constraints['max_em'] * 100
+            usage['Non-IG (≤25%)'] = (weights * df_metadata.loc[weights.index, 'Is_Non_IG']).sum() / constraints['max_non_ig'] * 100
+            usage['Hybrid (≤15%)'] = (weights * df_metadata.loc[weights.index, 'Is_Hybrid']).sum() / constraints['max_hybrid'] * 100
+            usage['T-Bills (≤20%)'] = weights['US T-Bills'] / constraints['max_tbill'] * 100 if 'US T-Bills' in weights.index else 0.0
             
             # Duration usage (if constraint exists)
             if constraints['max_duration'] is not None:
                 avg_duration = (weights * df_metadata.loc[weights.index, 'Duration']).sum()
-                usage['Duration Usage'] = avg_duration / constraints['max_duration'] * 100
+                usage[f'Duration (≤{constraints["max_duration"]} yrs)'] = avg_duration / constraints['max_duration'] * 100
             else:
-                usage['Duration Usage'] = 0.0
+                usage['Duration (≤∞ yrs)'] = 0.0
             
-            # T-Bill usage (if US T-Bills exists)
-            if 'US T-Bills' in weights.index:
-                tbill_weight = weights['US T-Bills']
-                usage['T-Bill Usage'] = tbill_weight / constraints['max_tbill'] * 100
-            else:
-                usage['T-Bill Usage'] = 0.0
+            # Rating usage (showing how close to minimum rating)
+            avg_rating = (weights * df_metadata.loc[weights.index, 'Rating_Num']).sum()
+            min_rating = constraints['min_rating']
+            rating_usage = ((avg_rating - min_rating) / (20 - min_rating)) * 100  # Scale from min_rating to AAA (20)
+            usage[f'Rating (≥{inverse_rating_scale[min_rating]})'] = max(0, rating_usage)
             
             constraint_usage[portfolio] = usage
         
         # Create DataFrame for constraint usage
         df_constraint_usage = pd.DataFrame(constraint_usage).round(2)
         
-        # Display constraint usage table
-        st.dataframe(df_constraint_usage, use_container_width=True)
+        # Apply color coding to the dataframe
+        def color_constraint_usage(val):
+            if pd.isna(val):
+                return ''
+            if val > 90:
+                return 'background-color: #ffcccc'  # Red for >90%
+            elif val > 70:
+                return 'background-color: #ffebcc'  # Orange for 70-90%
+            else:
+                return 'background-color: #ccffcc'  # Green for <70%
+        
+        # Display constraint usage table with color coding
+        st.dataframe(df_constraint_usage.style.applymap(color_constraint_usage), use_container_width=True)
         
         # Visual representation of constraint usage
         st.subheader("Constraint Usage Visualization")
@@ -673,8 +684,9 @@ if uploaded_file is not None:
             # Create bar chart
             fig_constraints = go.Figure()
             
-            constraints_list = ['Non-IG Usage', 'EM Usage', 'AT1 Usage', 'Hybrid Usage', 'Duration Usage', 'T-Bill Usage']
-            usage_values = [optimal_usage.get(constraint, 0) for constraint in constraints_list]
+            # Use the new constraint names with limits
+            constraints_list = list(optimal_usage.keys())
+            usage_values = list(optimal_usage.values())
             
             # Color bars based on usage level
             colors = ['red' if val > 90 else 'orange' if val > 70 else 'green' for val in usage_values]
