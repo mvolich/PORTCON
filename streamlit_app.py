@@ -437,7 +437,10 @@ if uploaded_file is not None:
     df_pct_change, df_metadata = process_data(df_raw, df_metadata_raw)
     
     # Calculate risk-free rate
-    rf_rate_hist = df_pct_change['US T-Bills'].mean() * 252
+    if 'US T-Bills' in df_pct_change.columns:
+        rf_rate_hist = df_pct_change['US T-Bills'].mean() * 252
+    else:
+        rf_rate_hist = 0.0  # Default or user-defined fallback
     
     # Calculate annualized returns and volatility
     annualized_returns = df_pct_change.mean() * 252 * 100
