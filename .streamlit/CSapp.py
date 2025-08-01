@@ -468,31 +468,71 @@ def negative_return_probability_plot(combined_df, min_obs=10):
     spread_order = ['<100', '100-150', '150-200', '200-250', 
                     '250-300', '300-400', '400-600', '600-800', '800+']
 
+    # Optional toggle
+    show_excluded = st.checkbox("Show excluded spread ranges", value=True)
+
+    # Select subset of categories
+    all_categories = sorted(grouped_stats['Category'].unique())
+    selected_categories = st.multiselect(
+        "Select asset categories to display:",
+        options=all_categories,
+        default=all_categories
+    )
+
+    # Define a clean, professional color palette
+    color_palette = px.colors.qualitative.Set2
+    color_map = {cat: color_palette[i % len(color_palette)] for i, cat in enumerate(all_categories)}
+
     fig = go.Figure()
 
-    for category in grouped_stats['Category'].unique():
+    tolerance = st.slider("Risk Tolerance (%)", min_value=0, max_value=40, value=8, step=1)
+
+    for i, category in enumerate(selected_categories):
         cat_df = grouped_stats[grouped_stats['Category'] == category]
         cat_df['Spread_Category_Order'] = cat_df['Spread Category'].apply(lambda x: spread_order.index(x))
         cat_df = cat_df.sort_values('Spread_Category_Order')
 
+        x_vals = cat_df['Spread Category']
+        y_vals = cat_df['percent_negative']
+        customdata = cat_df[['avg_return', 'std_return', 'observations']].values
+
+        # Split into investable vs excluded segments
+        investable_y = [y if y <= tolerance else None for y in y_vals]
+        excluded_y = [y if y > tolerance else None for y in y_vals]
+
+        # Colored trace for investable
         fig.add_trace(go.Scatter(
-            x=cat_df['Spread Category'],
-            y=cat_df['percent_negative'],
+            x=x_vals,
+            y=investable_y,
             mode='lines+markers',
             name=category,
+            customdata=customdata,
+            line=dict(color=color_map[category]),
+            marker=dict(color=color_map[category]),
             hovertemplate=(
-                "<b>%{fullData.name}</b><br>" +
-                "Spread Category: %{x}<br>" +
-                "Negative Returns: %{y:.2f}%<br>" +
-                "Avg Return: %{customdata[0]:.2f}%<br>" +
-                "Volatility: %{customdata[1]:.2f}%<br>" +
+                f"<b>{category}</b><br>"
+                "Spread Category: %{x}<br>"
+                "Negative Returns: %{y:.2f}%<br>"
+                "Avg Return: %{customdata[0]:.2f}%<br>"
+                "Volatility: %{customdata[1]:.2f}%<br>"
                 "Observations: %{customdata[2]}<extra></extra>"
-            ),
-            customdata=cat_df[['avg_return', 'std_return', 'observations']].values
+            )
         ))
 
-    # Add risk tolerance line (user-selectable)
-    tolerance = st.slider("Risk Tolerance (%)", min_value=0, max_value=40, value=8, step=1)
+        # Greyed-out trace for excluded
+        if show_excluded:
+            fig.add_trace(go.Scatter(
+                x=x_vals,
+                y=excluded_y,
+                mode='lines+markers',
+                name=f'{category} (excluded)',
+                line=dict(color='lightgrey', dash='dot'),
+                marker=dict(color='lightgrey'),
+                hoverinfo='skip',
+                showlegend=False
+            ))
+
+    # Add threshold line
     fig.add_hline(
         y=tolerance,
         line_dash="dash",
@@ -505,7 +545,7 @@ def negative_return_probability_plot(combined_df, min_obs=10):
         title="Historical Negative Return Probability by Spread Category",
         xaxis_title="Spread Category (bps)",
         yaxis_title="% Observations with Negative 1Y Returns",
-        hovermode="closest",  # Show tooltip only for the line hovered
+        hovermode="closest",
         yaxis=dict(range=[0, grouped_stats['percent_negative'].max() + 5]),
         legend_title="Asset Category",
         height=600,
