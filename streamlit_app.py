@@ -632,8 +632,8 @@ if uploaded_file is not None:
                 st.write(f"DEBUG: Applying threshold fix to {row}...")
                 # Apply threshold fix and explicitly enforce numeric dtype
                 row_data = df_metrics_display.loc[row]
-                fixed_data = row_data.apply(lambda x: 0.0 if abs(x) < threshold else x)
-                df_metrics_display.loc[row] = fixed_data.astype(float)  # Enforce dtype explicitly
+                fixed_data = row_data.apply(lambda x: 0.0 if abs(x) < threshold else x).astype(float)  # <-- critical fix here
+                df_metrics_display.loc[row] = fixed_data
                 st.write(f"DEBUG: ✓ Threshold fix applied to {row} with dtype: {df_metrics_display.loc[row].dtype}")
         
         # CRITICAL STEP: Verify all rows are numeric after threshold fix
