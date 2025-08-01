@@ -287,7 +287,10 @@ if uploaded_file is not None:
         
         # Explicit numeric conversion (exactly as original file)
         df_metadata[['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']] = df_metadata[['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']].astype(float)
-        df_metadata.loc['US T-Bills', ['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']] = 0
+        
+        # Set US T-Bills flags to 0 if it exists in the data (critical check)
+        if 'US T-Bills' in df_metadata.index:
+            df_metadata.loc['US T-Bills', ['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']] = 0
         
         # Validate that all required columns exist and are numeric
         required_numeric_cols = ['Rating_Num', 'Duration', 'Current Yield Hdgd']
