@@ -560,7 +560,16 @@ if uploaded_file is not None:
         st.write(f"DEBUG: df_metrics index: {df_metrics.index.tolist()}")
         st.write(f"DEBUG: df_metrics dtypes: {df_metrics.dtypes}")
         
+        # CRITICAL FIX: Ensure all metrics are numeric before processing
+        st.write("DEBUG: Converting all metrics to numeric first...")
         df_metrics_display = df_metrics.copy()
+        
+        # Force all rows to be numeric
+        for row in df_metrics_display.index:
+            df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
+        
+        st.write(f"DEBUG: After numeric conversion - dtypes: {df_metrics_display.dtypes}")
+        
         percent_cols = ['Expected Return', 'Expected Volatility', 'EM Exposure', 'AT1 Exposure',
                        'Non-IG Exposure', 'Hybrid Exposure', 'T-Bill Exposure', 'Avg Yield']
         
@@ -574,18 +583,14 @@ if uploaded_file is not None:
             try:
                 if row in percent_cols:
                     st.write(f"DEBUG: Converting {row} to percentage...")
-                    # Convert to numeric first to avoid dtype issues
-                    row_data = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
-                    st.write(f"DEBUG: Row data after conversion: {row_data.head().tolist()}")
-                    df_metrics_display.loc[row] = row_data * 100
+                    # Row is already numeric, just multiply by 100
+                    df_metrics_display.loc[row] = df_metrics_display.loc[row] * 100
                     df_metrics_display.loc[row] = df_metrics_display.loc[row].round(2)
                     st.write(f"DEBUG: ✓ {row} converted successfully")
                 elif row == 'Avg Rating':
                     st.write(f"DEBUG: Converting {row} to rating scale...")
-                    # Convert to numeric first to avoid dtype issues
-                    row_data = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
-                    st.write(f"DEBUG: Row data after conversion: {row_data.head().tolist()}")
-                    df_metrics_display.loc[row] = row_data.apply(
+                    # Row is already numeric, apply rating conversion
+                    df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
                         lambda x: inverse_rating_scale.get(int(round(x)), f"{x:.2f}")
                     )
                     st.write(f"DEBUG: ✓ {row} converted successfully")
