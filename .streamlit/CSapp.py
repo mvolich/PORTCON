@@ -19,7 +19,7 @@ st.set_page_config(
 # Add company logo to top right
 col1, col2, col3 = st.columns([6, 1, 1])
 with col1:
-    st.title("Credit Spreads & 1Y Return Analysis")
+    st.title("Credit Spreads vs 1Y Returns Analysis")
 with col3:
     st.markdown('<div style="text-align: right; width: 100%; padding-right: 0; margin-right: 0; position: relative; right: 0;">', unsafe_allow_html=True)
     st.image("https://rubricsam.com/wp-content/uploads/2021/01/cropped-rubrics-logo-tight.png", width=350)
