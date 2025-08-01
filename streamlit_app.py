@@ -313,89 +313,24 @@ if uploaded_file is not None:
         
         metadata = metadata.loc[idx]
         
-        # Debug statements to confirm alignment and numeric correctness
-        st.write("Metadata after processing:", metadata.head())
-        st.write("Returns after processing:", returns.head())
-        st.write("Metadata dtypes:", metadata.dtypes)
-        
-        # Extract numeric columns - exactly as original file (no explicit casting to avoid NaN issues)
+        # Extract numeric columns - exactly as original file
         rating = metadata['Rating_Num'].values
         duration = metadata['Duration'].values
         yields = metadata['Current Yield Hdgd'].values / 100
         
-        # Extract binary flags - exactly as original file (no explicit casting to avoid NaN issues)
+        # Extract binary flags - exactly as original file
         is_at1 = metadata['Is_AT1'].values
         is_em = metadata['Is_EM'].values
         is_non_ig = metadata['Is_Non_IG'].values
         is_hybrid = metadata['Is_Hybrid'].values
         
-        # Additional debugging for the specific arrays being used in optimization (AFTER they're defined)
-        st.write(f"Rating array type: {type(rating)}")
-        st.write(f"Rating array dtype: {rating.dtype}")
-        st.write(f"Rating array shape: {rating.shape}")
-        st.write(f"Rating array sample: {rating[:5].tolist()}")
-        
-        st.write(f"Duration array type: {type(duration)}")
-        st.write(f"Duration array dtype: {duration.dtype}")
-        st.write(f"Duration array shape: {duration.shape}")
-        st.write(f"Duration array sample: {duration[:5].tolist()}")
-        
-        st.write(f"Yields array type: {type(yields)}")
-        st.write(f"Yields array dtype: {yields.dtype}")
-        st.write(f"Yields array shape: {yields.shape}")
-        st.write(f"Yields array sample: {yields[:5].tolist()}")
-        
-        st.write(f"Is_AT1 array type: {type(is_at1)}")
-        st.write(f"Is_AT1 array dtype: {is_at1.dtype}")
-        st.write(f"Is_AT1 array shape: {is_at1.shape}")
-        st.write(f"Is_AT1 array sample: {is_at1[:5].tolist()}")
-        
-        # Create constraints with debugging
-        st.write("Creating constraints step by step...")
-        
+        # Create constraints
         constraints_list = [cp.sum(w) == 1, w >= 0]
-        st.write("✓ Basic constraints added")
-        
-        # Debug each constraint creation
-        try:
-            constraints_list.append(is_non_ig @ w <= constraints['max_non_ig'])
-            st.write("✓ Non-IG constraint added")
-        except Exception as e:
-            st.write(f"✗ Error adding Non-IG constraint: {e}")
-            st.write(f"is_non_ig type: {type(is_non_ig)}, dtype: {is_non_ig.dtype}")
-            raise
-            
-        try:
-            constraints_list.append(is_em @ w <= constraints['max_em'])
-            st.write("✓ EM constraint added")
-        except Exception as e:
-            st.write(f"✗ Error adding EM constraint: {e}")
-            st.write(f"is_em type: {type(is_em)}, dtype: {is_em.dtype}")
-            raise
-            
-        try:
-            constraints_list.append(is_at1 @ w <= constraints['max_at1'])
-            st.write("✓ AT1 constraint added")
-        except Exception as e:
-            st.write(f"✗ Error adding AT1 constraint: {e}")
-            st.write(f"is_at1 type: {type(is_at1)}, dtype: {is_at1.dtype}")
-            raise
-            
-        try:
-            constraints_list.append(is_hybrid @ w <= constraints['max_hybrid'])
-            st.write("✓ Hybrid constraint added")
-        except Exception as e:
-            st.write(f"✗ Error adding Hybrid constraint: {e}")
-            st.write(f"is_hybrid type: {type(is_hybrid)}, dtype: {is_hybrid.dtype}")
-            raise
-            
-        try:
-            constraints_list.append(rating @ w >= constraints['min_rating'])
-            st.write("✓ Rating constraint added")
-        except Exception as e:
-            st.write(f"✗ Error adding Rating constraint: {e}")
-            st.write(f"rating type: {type(rating)}, dtype: {rating.dtype}")
-            raise
+        constraints_list.append(is_non_ig @ w <= constraints['max_non_ig'])
+        constraints_list.append(is_em @ w <= constraints['max_em'])
+        constraints_list.append(is_at1 @ w <= constraints['max_at1'])
+        constraints_list.append(is_hybrid @ w <= constraints['max_hybrid'])
+        constraints_list.append(rating @ w >= constraints['min_rating'])
         
         # Initialize tbill_index variable
         tbill_index = None
@@ -407,32 +342,13 @@ if uploaded_file is not None:
         if constraints['max_duration'] is not None:
             constraints_list.append(duration @ w <= constraints['max_duration'])
         
-        try:
-            constraints_list.append(mu @ w >= target_return)
-            st.write("✓ Return constraint added")
-        except Exception as e:
-            st.write(f"✗ Error adding return constraint: {e}")
-            st.write(f"mu type: {type(mu)}, dtype: {mu.dtype}")
-            raise
-        
-        st.write("Problem formulation:")
-        st.write(f"Objective: Minimize quadratic form with covariance matrix")
-        st.write(f"Number of constraints: {len(constraints_list)}")
-        st.write(f"Number of variables: {n}")
+        constraints_list.append(mu @ w >= target_return)
         
         problem = cp.Problem(cp.Minimize(cp.quad_form(w, cov)), constraints_list)
         
-        st.write("About to solve the problem...")
-        st.write(f"Problem status before solve: {problem.status}")
-        
         try:
-            st.write("Calling problem.solve()...")
             problem.solve()
-            st.write("✓ Problem solved successfully")
-            st.write(f"Problem status after solve: {problem.status}")
         except Exception as e:
-            st.write(f"✗ Error during problem.solve(): {e}")
-            st.write(f"Error type: {type(e)}")
             raise ValueError(f"Optimization solver error: {str(e)}")
         
         if w.value is None:
@@ -444,76 +360,15 @@ if uploaded_file is not None:
         rating_avg = (rating @ w.value).item()
         tbill_weight = w.value[tbill_index].item() if tbill_index is not None else 0.0
         
-        # Debug metrics calculation
-        st.write("Calculating metrics...")
-        
-        try:
-            expected_return = (mu @ w.value).item()
-            st.write(f"✓ Expected Return calculated: {expected_return}")
-        except Exception as e:
-            st.write(f"✗ Error calculating Expected Return: {e}")
-            raise
-            
-        try:
-            expected_volatility = np.sqrt((w.value).T @ cov @ w.value).item()
-            st.write(f"✓ Expected Volatility calculated: {expected_volatility}")
-        except Exception as e:
-            st.write(f"✗ Error calculating Expected Volatility: {e}")
-            raise
-            
-        try:
-            avg_yield = (yields @ w.value).item()
-            st.write(f"✓ Avg Yield calculated: {avg_yield}")
-        except Exception as e:
-            st.write(f"✗ Error calculating Avg Yield: {e}")
-            raise
-            
-        try:
-            avg_duration = (duration @ w.value).item()
-            st.write(f"✓ Avg Duration calculated: {avg_duration}")
-        except Exception as e:
-            st.write(f"✗ Error calculating Avg Duration: {e}")
-            raise
-            
-        try:
-            st.write(f"✓ Avg Rating calculated: {rating_avg}")
-        except Exception as e:
-            st.write(f"✗ Error with Avg Rating: {e}")
-            raise
-            
-        try:
-            em_exposure = (is_em @ w.value).item()
-            st.write(f"✓ EM Exposure calculated: {em_exposure}")
-        except Exception as e:
-            st.write(f"✗ Error calculating EM Exposure: {e}")
-            raise
-            
-        try:
-            at1_exposure = (is_at1 @ w.value).item()
-            st.write(f"✓ AT1 Exposure calculated: {at1_exposure}")
-        except Exception as e:
-            st.write(f"✗ Error calculating AT1 Exposure: {e}")
-            raise
-            
-        try:
-            non_ig_exposure = (is_non_ig @ w.value).item()
-            st.write(f"✓ Non-IG Exposure calculated: {non_ig_exposure}")
-        except Exception as e:
-            st.write(f"✗ Error calculating Non-IG Exposure: {e}")
-            raise
-            
-        try:
-            hybrid_exposure = (is_hybrid @ w.value).item()
-            st.write(f"✓ Hybrid Exposure calculated: {hybrid_exposure}")
-        except Exception as e:
-            st.write(f"✗ Error calculating Hybrid Exposure: {e}")
-            raise
-            
-        try:
-            st.write(f"✓ T-Bill Exposure calculated: {tbill_weight}")
-        except Exception as e:
-            st.write(f"✗ Error with T-Bill Exposure: {e}")
-            raise
+        # Calculate metrics
+        expected_return = (mu @ w.value).item()
+        expected_volatility = np.sqrt((w.value).T @ cov @ w.value).item()
+        avg_yield = (yields @ w.value).item()
+        avg_duration = (duration @ w.value).item()
+        em_exposure = (is_em @ w.value).item()
+        at1_exposure = (is_at1 @ w.value).item()
+        non_ig_exposure = (is_non_ig @ w.value).item()
+        hybrid_exposure = (is_hybrid @ w.value).item()
         
         metrics = {
             'Expected Return': expected_return,
@@ -532,35 +387,24 @@ if uploaded_file is not None:
     
     def generate_efficient_frontier(fund_name, df_returns, df_metadata, fund_constraints, rf_rate_hist, step_size=0.0015):
         """Generate efficient frontier"""
-        st.write("In generate_efficient_frontier function")
-        st.write(f"Fund name: {fund_name}")
-        st.write(f"Returns shape: {df_returns.shape}")
-        st.write(f"Metadata shape: {df_metadata.shape}")
-        
         # Find minimum return portfolio
         try:
-            st.write("Attempting to build minimum return portfolio...")
             w_min, m_min = optimise_portfolio(
                 fund_name, df_returns, df_metadata, fund_constraints, rf_rate_hist,
                 target_return = df_returns.mean().min() * 252 * 0.5
             )
-            st.write("✓ Minimum return portfolio built successfully")
         except Exception as e:
-            st.write(f"✗ Error building minimum return portfolio: {e}")
-            st.write(f"Error type: {type(e)}")
             raise ValueError(f"Cannot build min return portfolio for {fund_name}: {e}")
         
         min_return = m_min['Expected Return']
         max_return = min_return * 2
         
         targets = np.arange(min_return, max_return + step_size, step_size)
-        st.write(f"Number of targets to process: {len(targets)}")
         
         returns_list, risks_list, metrics_dict, weights_dict = [], [], {}, {}
         
         for i, target in enumerate(targets):
             try:
-                st.write(f"Processing target {i+1}/{len(targets)}: {target:.6f}")
                 w, m = optimise_portfolio(
                     fund_name, df_returns, df_metadata, fund_constraints, rf_rate_hist, target
                 )
@@ -569,10 +413,7 @@ if uploaded_file is not None:
                 label = f"Portfolio {len(metrics_dict)+1}"
                 metrics_dict[label] = m
                 weights_dict[label] = w
-                st.write(f"✓ Portfolio {len(metrics_dict)} built successfully")
             except Exception as e:
-                st.write(f"✗ Error on target {i+1}: {e}")
-                st.write(f"Error type: {type(e)}")
                 continue
         
         if not metrics_dict:
@@ -638,10 +479,6 @@ if uploaded_file is not None:
     st.header(f"🎯 {selected_fund} Portfolio Optimization")
     
     try:
-        st.write("Starting optimization...")
-        st.write(f"Selected fund: {selected_fund}")
-        st.write(f"Constraints: {st.session_state.fund_constraints[selected_fund]}")
-        
         returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
             selected_fund, df_pct_change, df_metadata, 
             st.session_state.fund_constraints[selected_fund], rf_rate_hist
@@ -739,18 +576,8 @@ if uploaded_file is not None:
         # Optimal portfolio
         st.subheader("Optimal Portfolio")
         
-        # Debug: Check if Sharpe row exists and its data type
-        st.write("Debug - df_metrics index:", df_metrics.index.tolist())
-        st.write("Debug - df_metrics dtypes:", df_metrics.dtypes)
-        
         if 'Sharpe (Hist Avg)' in df_metrics.index:
-            sharpe_row = df_metrics.loc['Sharpe (Hist Avg)']
-            st.write("Debug - Sharpe row type:", type(sharpe_row))
-            st.write("Debug - Sharpe row dtype:", sharpe_row.dtype)
-            st.write("Debug - Sharpe row values:", sharpe_row.values)
-            
-            # Convert to numeric if needed
-            sharpe_row = pd.to_numeric(sharpe_row, errors='coerce').fillna(0)
+            sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
             optimal_portfolio = sharpe_row.idxmax()
             optimal_sharpe = sharpe_row[optimal_portfolio]
         else:
