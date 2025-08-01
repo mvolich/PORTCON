@@ -624,27 +624,19 @@ if uploaded_file is not None:
         
         st.write(f"DEBUG: Processing {len(df_metrics_display.index)} rows...")
         
-        # CRITICAL FIX: Replace extremely small values (close to 0) with exactly 0
-        st.write("DEBUG: Applying threshold fix for extremely small values...")
-        threshold = 1e-10  # define a sensible threshold
+        # SIMPLIFIED FIX: Replace extremely small values and ensure numeric dtype
+        st.write("DEBUG: Applying simplified threshold fix...")
+        threshold = 1e-10
         for row in percent_cols:
             if row in df_metrics_display.index:
-                st.write(f"DEBUG: Applying threshold fix to {row}...")
-                # Apply threshold fix and explicitly enforce numeric dtype
-                row_data = df_metrics_display.loc[row]
-                fixed_data = row_data.apply(lambda x: 0.0 if abs(x) < threshold else x).astype(float)  # <-- critical fix here
-                df_metrics_display.loc[row] = fixed_data
-                st.write(f"DEBUG: ✓ Threshold fix applied to {row} with dtype: {df_metrics_display.loc[row].dtype}")
-        
-        # CRITICAL STEP: Verify all rows are numeric after threshold fix
-        st.write("DEBUG: Verifying numeric dtypes after threshold fix...")
-        for row in percent_cols:
-            if row in df_metrics_display.index:
-                st.write(f"DEBUG: Verifying {row} has dtype: {df_metrics_display.loc[row].dtype}")
-                if df_metrics_display.loc[row].dtype != 'float64':
-                    st.write(f"DEBUG: ⚠️ {row} is not float64, forcing conversion...")
-                    df_metrics_display.loc[row] = df_metrics_display.loc[row].astype(float)
-                    st.write(f"DEBUG: ✓ {row} now has dtype: {df_metrics_display.loc[row].dtype}")
+                st.write(f"DEBUG: Processing {row}...")
+                # Get the row data
+                row_values = df_metrics_display.loc[row].values
+                # Apply threshold directly to numpy array
+                row_values = np.where(np.abs(row_values) < threshold, 0.0, row_values)
+                # Convert back to pandas Series with explicit float dtype
+                df_metrics_display.loc[row] = pd.Series(row_values, index=df_metrics_display.columns, dtype=float)
+                st.write(f"DEBUG: ✓ {row} processed with dtype: {df_metrics_display.loc[row].dtype}")
         
         for i, row in enumerate(df_metrics_display.index):
              st.write(f"DEBUG: Processing row {i+1}/{len(df_metrics_display.index)}: {row}")
