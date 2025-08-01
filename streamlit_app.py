@@ -623,27 +623,27 @@ if uploaded_file is not None:
                        'Non-IG Exposure', 'Hybrid Exposure', 'T-Bill Exposure', 'Avg Yield']
         
         st.write(f"DEBUG: Processing {len(df_metrics_display.index)} rows...")
-         
-         # CRITICAL FIX: Replace extremely small values (close to 0) with exactly 0
-         st.write("DEBUG: Applying threshold fix for extremely small values...")
-         threshold = 1e-10  # define a sensible threshold
-         for row in percent_cols:
-             if row in df_metrics_display.index:
-                 st.write(f"DEBUG: Applying threshold fix to {row}...")
-                 df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
-                     lambda x: 0.0 if abs(x) < threshold else x
-                 )
-                 st.write(f"DEBUG: ✓ Threshold fix applied to {row}")
-         
-         # CRITICAL STEP: Explicitly force dtype conversion to numeric after threshold fix
-         st.write("DEBUG: Explicitly forcing numeric conversion after threshold fix...")
-         for row in percent_cols:
-             if row in df_metrics_display.index:
-                 st.write(f"DEBUG: Forcing numeric conversion for {row}...")
-                 df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0.0)
-                 st.write(f"DEBUG: ✓ Numeric conversion completed for {row}")
-         
-         for i, row in enumerate(df_metrics_display.index):
+        
+        # CRITICAL FIX: Replace extremely small values (close to 0) with exactly 0
+        st.write("DEBUG: Applying threshold fix for extremely small values...")
+        threshold = 1e-10  # define a sensible threshold
+        for row in percent_cols:
+            if row in df_metrics_display.index:
+                st.write(f"DEBUG: Applying threshold fix to {row}...")
+                df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
+                    lambda x: 0.0 if abs(x) < threshold else x
+                )
+                st.write(f"DEBUG: ✓ Threshold fix applied to {row}")
+        
+        # CRITICAL STEP: Explicitly force dtype conversion to numeric after threshold fix
+        st.write("DEBUG: Explicitly forcing numeric conversion after threshold fix...")
+        for row in percent_cols:
+            if row in df_metrics_display.index:
+                st.write(f"DEBUG: Forcing numeric conversion for {row}...")
+                df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0.0)
+                st.write(f"DEBUG: ✓ Numeric conversion completed for {row}")
+        
+        for i, row in enumerate(df_metrics_display.index):
              st.write(f"DEBUG: Processing row {i+1}/{len(df_metrics_display.index)}: {row}")
              st.write(f"DEBUG: Row dtype before processing: {df_metrics_display.loc[row].dtype}")
              st.write(f"DEBUG: Row sample values: {df_metrics_display.loc[row].head().tolist()}")
