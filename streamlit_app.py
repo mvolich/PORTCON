@@ -580,8 +580,25 @@ if uploaded_file is not None:
         
         # Optimal portfolio
         st.subheader("Optimal Portfolio")
-        optimal_portfolio = df_metrics.loc['Sharpe (Hist Avg)'].idxmax()
-        optimal_sharpe = df_metrics.loc['Sharpe (Hist Avg)', optimal_portfolio]
+        
+        # Debug: Check if Sharpe row exists and its data type
+        st.write("Debug - df_metrics index:", df_metrics.index.tolist())
+        st.write("Debug - df_metrics dtypes:", df_metrics.dtypes)
+        
+        if 'Sharpe (Hist Avg)' in df_metrics.index:
+            sharpe_row = df_metrics.loc['Sharpe (Hist Avg)']
+            st.write("Debug - Sharpe row type:", type(sharpe_row))
+            st.write("Debug - Sharpe row dtype:", sharpe_row.dtype)
+            st.write("Debug - Sharpe row values:", sharpe_row.values)
+            
+            # Convert to numeric if needed
+            sharpe_row = pd.to_numeric(sharpe_row, errors='coerce').fillna(0)
+            optimal_portfolio = sharpe_row.idxmax()
+            optimal_sharpe = sharpe_row[optimal_portfolio]
+        else:
+            st.error("Sharpe (Hist Avg) row not found in metrics")
+            st.stop()
+            
         optimal_return = df_metrics.loc['Expected Return', optimal_portfolio]
         optimal_vol = df_metrics.loc['Expected Volatility', optimal_portfolio]
         
