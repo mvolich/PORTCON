@@ -93,6 +93,23 @@ st.markdown("""
     .stDataFrame {
         font-family: 'Ringside', sans-serif !important;
     }
+    
+    /* Rubrics Blue styling for multiselect buttons */
+    .stMultiSelect [data-baseweb="select"] {
+        background-color: #2C5697 !important;
+        border-color: #2C5697 !important;
+    }
+    
+    .stMultiSelect [data-baseweb="select"]:hover {
+        background-color: #001E4F !important;
+        border-color: #001E4F !important;
+    }
+    
+    .stMultiSelect [data-baseweb="select"]:focus {
+        background-color: #2C5697 !important;
+        border-color: #2C5697 !important;
+        box-shadow: 0 0 0 2px rgba(44, 86, 151, 0.2) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -451,7 +468,7 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
 
     return pd.DataFrame(results)
 
-def negative_return_probability_plot(combined_df, min_obs=10):
+def negative_return_probability_plot(combined_df):
     df = combined_df.copy()
     df['Spread Category'] = df['Spread'].apply(categorize_spread)
 
@@ -461,9 +478,6 @@ def negative_return_probability_plot(combined_df, min_obs=10):
         std_return=('1 Yr Ahead ER', 'std'),
         observations=('1 Yr Ahead ER', 'count')
     ).reset_index()
-
-    # Filter bins for minimum observations
-    grouped_stats = grouped_stats[grouped_stats['observations'] >= min_obs]
 
     spread_order = ['<100', '100-150', '150-200', '200-250', 
                     '250-300', '300-400', '400-600', '600-800', '800+']
@@ -812,14 +826,9 @@ if uploaded_file is not None:
         
         with tab3:
             st.subheader("Historical Risk Analysis by Spread Category")
-            
-            min_obs = st.number_input(
-                "Minimum Number of Observations per Category",
-                min_value=1, max_value=50, value=10, step=1
-            )
 
             # Create the negative return probability plot
-            fig_negative_returns = negative_return_probability_plot(combined_df, min_obs=min_obs)
+            fig_negative_returns = negative_return_probability_plot(combined_df)
             st.plotly_chart(fig_negative_returns, use_container_width=True)
             
             # Add explanation
