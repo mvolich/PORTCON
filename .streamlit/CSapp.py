@@ -110,6 +110,28 @@ st.markdown("""
         border-color: #2C5697 !important;
         box-shadow: 0 0 0 2px rgba(44, 86, 151, 0.2) !important;
     }
+    
+    /* Rubrics Blue styling for multiselect option buttons */
+    .stMultiSelect [data-baseweb="tag"] {
+        background-color: #2C5697 !important;
+        border-color: #2C5697 !important;
+        color: white !important;
+    }
+    
+    .stMultiSelect [data-baseweb="tag"]:hover {
+        background-color: #001E4F !important;
+        border-color: #001E4F !important;
+    }
+    
+    /* Rubrics Blue styling for multiselect dropdown */
+    .stMultiSelect [data-baseweb="popover"] {
+        border-color: #2C5697 !important;
+    }
+    
+    .stMultiSelect [data-baseweb="option"]:hover {
+        background-color: #2C5697 !important;
+        color: white !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -468,7 +490,7 @@ def calculate_min_safe_spreads(combined_df, safety_threshold=0.05, min_obs=10):
 
     return pd.DataFrame(results)
 
-def negative_return_probability_plot(combined_df):
+def negative_return_probability_plot(combined_df, show_excluded=True, selected_categories=None, tolerance=8):
     df = combined_df.copy()
     df['Spread Category'] = df['Spread'].apply(categorize_spread)
 
@@ -482,24 +504,15 @@ def negative_return_probability_plot(combined_df):
     spread_order = ['<100', '100-150', '150-200', '200-250', 
                     '250-300', '300-400', '400-600', '600-800', '800+']
 
-    # Optional toggle
-    show_excluded = st.checkbox("Show excluded spread ranges", value=True)
-
-    # Select subset of categories
-    all_categories = sorted(grouped_stats['Category'].unique())
-    selected_categories = st.multiselect(
-        "Select asset categories to display:",
-        options=all_categories,
-        default=all_categories
-    )
+    # Use provided selected_categories or default to all
+    if selected_categories is None:
+        selected_categories = sorted(grouped_stats['Category'].unique())
 
     # Define a clean, professional color palette
     color_palette = px.colors.qualitative.Set2
-    color_map = {cat: color_palette[i % len(color_palette)] for i, cat in enumerate(all_categories)}
+    color_map = {cat: color_palette[i % len(color_palette)] for i, cat in enumerate(sorted(grouped_stats['Category'].unique()))}
 
     fig = go.Figure()
-
-    tolerance = st.slider("Risk Tolerance (%)", min_value=0, max_value=80, value=8, step=5)
 
     for i, category in enumerate(selected_categories):
         cat_df = grouped_stats[grouped_stats['Category'] == category]
@@ -827,8 +840,36 @@ if uploaded_file is not None:
         with tab3:
             st.subheader("Historical Risk Analysis by Spread Category")
 
+            # Get all categories for the multiselect
+            df_temp = combined_df.copy()
+            df_temp['Spread Category'] = df_temp['Spread'].apply(categorize_spread)
+            grouped_stats_temp = df_temp.groupby(['Category', 'Spread Category']).agg(
+                percent_negative=('1 Yr Ahead ER', lambda x: (x < 0).mean() * 100),
+                avg_return=('1 Yr Ahead ER', 'mean'),
+                std_return=('1 Yr Ahead ER', 'std'),
+                observations=('1 Yr Ahead ER', 'count')
+            ).reset_index()
+            
+            all_categories = sorted(grouped_stats_temp['Category'].unique())
+
+            # Controls
+            show_excluded = st.checkbox("Show excluded spread ranges", value=True)
+            
+            selected_categories = st.multiselect(
+                "Select asset categories to display:",
+                options=all_categories,
+                default=all_categories
+            )
+            
+            tolerance = st.slider("Risk Tolerance (%)", min_value=0, max_value=80, value=8, step=5)
+
             # Create the negative return probability plot
-            fig_negative_returns = negative_return_probability_plot(combined_df)
+            fig_negative_returns = negative_return_probability_plot(
+                combined_df, 
+                show_excluded=show_excluded, 
+                selected_categories=selected_categories, 
+                tolerance=tolerance
+            )
             st.plotly_chart(fig_negative_returns, use_container_width=True)
             
             # Add explanation
