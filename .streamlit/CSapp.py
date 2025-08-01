@@ -485,7 +485,7 @@ def negative_return_probability_plot(combined_df, min_obs=10):
 
     fig = go.Figure()
 
-    tolerance = st.slider("Risk Tolerance (%)", min_value=0, max_value=40, value=8, step=1)
+    tolerance = st.slider("Risk Tolerance (%)", min_value=0, max_value=80, value=8, step=5)
 
     for i, category in enumerate(selected_categories):
         cat_df = grouped_stats[grouped_stats['Category'] == category]
