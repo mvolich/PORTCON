@@ -330,25 +330,25 @@ if uploaded_file is not None:
         is_hybrid = metadata['Is_Hybrid'].values
         
         # Additional debugging for the specific arrays being used in optimization (AFTER they're defined)
-        st.write("Rating array type:", type(rating))
-        st.write("Rating array dtype:", rating.dtype)
-        st.write("Rating array shape:", rating.shape)
-        st.write("Rating array sample:", rating[:5])
+        st.write(f"Rating array type: {type(rating)}")
+        st.write(f"Rating array dtype: {rating.dtype}")
+        st.write(f"Rating array shape: {rating.shape}")
+        st.write(f"Rating array sample: {rating[:5].tolist()}")
         
-        st.write("Duration array type:", type(duration))
-        st.write("Duration array dtype:", duration.dtype)
-        st.write("Duration array shape:", duration.shape)
-        st.write("Duration array sample:", duration[:5])
+        st.write(f"Duration array type: {type(duration)}")
+        st.write(f"Duration array dtype: {duration.dtype}")
+        st.write(f"Duration array shape: {duration.shape}")
+        st.write(f"Duration array sample: {duration[:5].tolist()}")
         
-        st.write("Yields array type:", type(yields))
-        st.write("Yields array dtype:", yields.dtype)
-        st.write("Yields array shape:", yields.shape)
-        st.write("Yields array sample:", yields[:5])
+        st.write(f"Yields array type: {type(yields)}")
+        st.write(f"Yields array dtype: {yields.dtype}")
+        st.write(f"Yields array shape: {yields.shape}")
+        st.write(f"Yields array sample: {yields[:5].tolist()}")
         
-        st.write("Is_AT1 array type:", type(is_at1))
-        st.write("Is_AT1 array dtype:", is_at1.dtype)
-        st.write("Is_AT1 array shape:", is_at1.shape)
-        st.write("Is_AT1 array sample:", is_at1[:5])
+        st.write(f"Is_AT1 array type: {type(is_at1)}")
+        st.write(f"Is_AT1 array dtype: {is_at1.dtype}")
+        st.write(f"Is_AT1 array shape: {is_at1.shape}")
+        st.write(f"Is_AT1 array sample: {is_at1[:5].tolist()}")
         
         # Create constraints with debugging
         st.write("Creating constraints step by step...")
