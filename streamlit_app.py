@@ -624,19 +624,8 @@ if uploaded_file is not None:
         
         st.write(f"DEBUG: Processing {len(df_metrics_display.index)} rows...")
         
-        # SIMPLIFIED FIX: Replace extremely small values and ensure numeric dtype
-        st.write("DEBUG: Applying simplified threshold fix...")
-        threshold = 1e-10
-        for row in percent_cols:
-            if row in df_metrics_display.index:
-                st.write(f"DEBUG: Processing {row}...")
-                # Get the row data
-                row_values = df_metrics_display.loc[row].values
-                # Apply threshold directly to numpy array
-                row_values = np.where(np.abs(row_values) < threshold, 0.0, row_values)
-                # Convert back to pandas Series with explicit float dtype
-                df_metrics_display.loc[row] = pd.Series(row_values, index=df_metrics_display.columns, dtype=float)
-                st.write(f"DEBUG: ✓ {row} processed with dtype: {df_metrics_display.loc[row].dtype}")
+        # DRASTIC WORKAROUND: Skip threshold fix entirely and handle small values during percentage conversion
+        st.write("DEBUG: Using drastic workaround - skipping threshold fix...")
         
         for i, row in enumerate(df_metrics_display.index):
              st.write(f"DEBUG: Processing row {i+1}/{len(df_metrics_display.index)}: {row}")
@@ -645,9 +634,16 @@ if uploaded_file is not None:
              
              try:
                  if row in percent_cols:
-                     st.write(f"DEBUG: Converting {row} to percentage...")
-                     # Now safely convert to percentages after threshold fix
-                     df_metrics_display.loc[row] = (df_metrics_display.loc[row] * 100).round(2)
+                     st.write(f"DEBUG: Converting {row} to percentage with small value handling...")
+                     # Handle small values during percentage conversion
+                     row_data = df_metrics_display.loc[row]
+                     # Convert to percentage first
+                     percentage_data = row_data * 100
+                     # Round to 2 decimal places (this will handle very small values)
+                     percentage_data = percentage_data.round(2)
+                     # Replace any remaining very small values with 0
+                     percentage_data = percentage_data.apply(lambda x: 0.0 if abs(x) < 0.01 else x)
+                     df_metrics_display.loc[row] = percentage_data
                      st.write(f"DEBUG: ✓ {row} converted successfully")
                  elif row == 'Avg Rating':
                      st.write(f"DEBUG: Converting {row} to rating scale...")
