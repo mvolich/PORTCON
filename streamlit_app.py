@@ -377,13 +377,22 @@ if uploaded_file is not None:
     
     def generate_efficient_frontier(fund_name, df_returns, df_metadata, fund_constraints, rf_rate_hist, step_size=0.0015):
         """Generate efficient frontier"""
+        st.write("In generate_efficient_frontier function")
+        st.write(f"Fund name: {fund_name}")
+        st.write(f"Returns shape: {df_returns.shape}")
+        st.write(f"Metadata shape: {df_metadata.shape}")
+        
         # Find minimum return portfolio
         try:
+            st.write("Attempting to build minimum return portfolio...")
             w_min, m_min = optimise_portfolio(
                 fund_name, df_returns, df_metadata, fund_constraints, rf_rate_hist,
                 target_return = df_returns.mean().min() * 252 * 0.5
             )
+            st.write("✓ Minimum return portfolio built successfully")
         except Exception as e:
+            st.write(f"✗ Error building minimum return portfolio: {e}")
+            st.write(f"Error type: {type(e)}")
             raise ValueError(f"Cannot build min return portfolio for {fund_name}: {e}")
         
         min_return = m_min['Expected Return']
@@ -466,6 +475,10 @@ if uploaded_file is not None:
     st.header(f"🎯 {selected_fund} Portfolio Optimization")
     
     try:
+        st.write("Starting optimization...")
+        st.write(f"Selected fund: {selected_fund}")
+        st.write(f"Constraints: {st.session_state.fund_constraints[selected_fund]}")
+        
         returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
             selected_fund, df_pct_change, df_metadata, 
             st.session_state.fund_constraints[selected_fund], rf_rate_hist
@@ -590,6 +603,8 @@ if uploaded_file is not None:
         
     except Exception as e:
         st.error(f"Error in optimization: {str(e)}")
+        st.write(f"Error type: {type(e)}")
+        st.write(f"Error details: {e}")
         st.info("Try adjusting the constraints in the sidebar to make the optimization feasible.")
 
 else:
