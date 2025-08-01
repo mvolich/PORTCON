@@ -557,8 +557,8 @@ if uploaded_file is not None:
         # OPTIMIZED APPROACH: Create a clean, reliable metrics display
         st.write("DEBUG: Creating optimized metrics display...")
         
-        # Create a fresh DataFrame for display
-        df_metrics_display = pd.DataFrame()
+        # Create a fresh DataFrame for display with proper structure
+        df_metrics_display = pd.DataFrame(index=df_metrics.index, columns=df_metrics.columns)
         
         # Define which rows need percentage conversion
         percent_rows = ['Expected Return', 'Expected Volatility', 'EM Exposure', 'AT1 Exposure',
@@ -614,9 +614,6 @@ if uploaded_file is not None:
                 # Set to zeros as fallback
                 df_metrics_display.loc[row] = [0.0] * len(df_metrics.columns)
                 st.write(f"DEBUG: ⚠️ {row} set to zeros as fallback")
-        
-        # Set the column names
-        df_metrics_display.columns = df_metrics.columns
         
         st.write(f"DEBUG: Final metrics display shape: {df_metrics_display.shape}")
         st.write(f"DEBUG: Final metrics display dtypes: {df_metrics_display.dtypes}")
