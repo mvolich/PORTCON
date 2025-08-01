@@ -630,10 +630,10 @@ if uploaded_file is not None:
         for row in percent_cols:
             if row in df_metrics_display.index:
                 st.write(f"DEBUG: Applying threshold fix to {row}...")
-                # Apply threshold fix and immediately convert to numeric to maintain dtype
+                # Apply threshold fix and explicitly enforce numeric dtype
                 row_data = df_metrics_display.loc[row]
                 fixed_data = row_data.apply(lambda x: 0.0 if abs(x) < threshold else x)
-                df_metrics_display.loc[row] = pd.to_numeric(fixed_data, errors='coerce').fillna(0.0)
+                df_metrics_display.loc[row] = fixed_data.astype(float)  # Enforce dtype explicitly
                 st.write(f"DEBUG: ✓ Threshold fix applied to {row} with dtype: {df_metrics_display.loc[row].dtype}")
         
         # CRITICAL STEP: Explicitly force dtype conversion to numeric after threshold fix
