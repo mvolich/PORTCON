@@ -596,6 +596,29 @@ if uploaded_file is not None:
         df_metrics_display = df_metrics_display.astype(float)
         st.write(f"DEBUG: After force conversion - dtypes: {df_metrics_display.dtypes}")
         
+        # FINAL SAFETY CHECK: Convert any remaining object rows to numeric
+        st.write("DEBUG: Final safety check - converting any remaining object rows...")
+        for row in df_metrics_display.index:
+            if df_metrics_display.loc[row].dtype == 'object':
+                st.write(f"DEBUG: Converting problematic row '{row}' to numeric...")
+                try:
+                    # Convert to numeric and replace any problematic values with 0
+                    numeric_values = []
+                    for val in df_metrics_display.loc[row]:
+                        try:
+                            numeric_values.append(float(val))
+                        except (ValueError, TypeError):
+                            numeric_values.append(0.0)
+                    df_metrics_display.loc[row] = numeric_values
+                    st.write(f"DEBUG: ✓ Row '{row}' converted to numeric successfully")
+                except Exception as e:
+                    st.write(f"DEBUG: ✗ Failed to convert row '{row}': {e}")
+                    # Set entire row to zeros as last resort
+                    df_metrics_display.loc[row] = 0.0
+                    st.write(f"DEBUG: ⚠️ Row '{row}' set to zeros as final fallback")
+        
+        st.write(f"DEBUG: After final safety check - dtypes: {df_metrics_display.dtypes}")
+        
         percent_cols = ['Expected Return', 'Expected Volatility', 'EM Exposure', 'AT1 Exposure',
                        'Non-IG Exposure', 'Hybrid Exposure', 'T-Bill Exposure', 'Avg Yield']
         
@@ -609,23 +632,13 @@ if uploaded_file is not None:
             try:
                 if row in percent_cols:
                     st.write(f"DEBUG: Converting {row} to percentage...")
-                    # Ensure row is numeric before processing
-                    if df_metrics_display.loc[row].dtype == 'object':
-                        st.write(f"DEBUG: Row '{row}' is still object, forcing conversion...")
-                        df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
-                    
-                    # Row is now numeric, multiply by 100
+                    # Row should now be numeric, multiply by 100
                     df_metrics_display.loc[row] = df_metrics_display.loc[row] * 100
                     df_metrics_display.loc[row] = df_metrics_display.loc[row].round(2)
                     st.write(f"DEBUG: ✓ {row} converted successfully")
                 elif row == 'Avg Rating':
                     st.write(f"DEBUG: Converting {row} to rating scale...")
-                    # Ensure row is numeric before processing
-                    if df_metrics_display.loc[row].dtype == 'object':
-                        st.write(f"DEBUG: Row '{row}' is still object, forcing conversion...")
-                        df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
-                    
-                    # Row is now numeric, apply rating conversion
+                    # Row should now be numeric, apply rating conversion
                     df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
                         lambda x: inverse_rating_scale.get(int(round(x)), f"{x:.2f}")
                     )
