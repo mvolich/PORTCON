@@ -17,7 +17,7 @@ st.set_page_config(
 )
 
 # Add company logo to top right
-col1, col2, col3 = st.columns([4, 1, 3])
+col1, col2, col3 = st.columns([5, 1, 2])
 with col1:
     st.title("Credit Spreads & 1Y Return Analysis")
 with col3:
