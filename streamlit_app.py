@@ -313,10 +313,10 @@ if uploaded_file is not None:
         
         metadata = metadata.loc[idx]
         
-        # Extract numeric columns - exactly as original file
-        rating = metadata['Rating_Num'].values
-        duration = metadata['Duration'].values
-        yields = metadata['Current Yield Hdgd'].values / 100
+        # Extract numeric columns - exactly as original file with explicit float casting
+        rating = metadata['Rating_Num'].values.astype(float)
+        duration = metadata['Duration'].values.astype(float)
+        yields = metadata['Current Yield Hdgd'].values.astype(float) / 100
         
         # Extract binary flags with explicit float casting (as original file)
         is_at1 = metadata['Is_AT1'].values.astype(float)
