@@ -396,11 +396,26 @@ if uploaded_file is not None:
         
         constraints_list.append(mu @ w >= target_return)
         
+        # Debug the problem formulation
+        st.write("Problem formulation:")
+        st.write(f"Objective: Minimize quadratic form with covariance matrix")
+        st.write(f"Number of constraints: {len(constraints_list)}")
+        st.write(f"Number of variables: {n}")
+        
         problem = cp.Problem(cp.Minimize(cp.quad_form(w, cov)), constraints_list)
         
+        # Debug before solving
+        st.write("About to solve the problem...")
+        st.write(f"Problem status before solve: {problem.status}")
+        
         try:
+            st.write("Calling problem.solve()...")
             problem.solve()
+            st.write(f"✓ Problem solved successfully")
+            st.write(f"Problem status after solve: {problem.status}")
         except Exception as e:
+            st.write(f"✗ Error during problem.solve(): {e}")
+            st.write(f"Error type: {type(e)}")
             raise ValueError(f"Optimization solver error: {str(e)}")
         
         if w.value is None:
