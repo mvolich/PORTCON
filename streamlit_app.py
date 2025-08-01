@@ -277,19 +277,9 @@ if uploaded_file is not None:
         df_metadata = df_metadata_raw[df_metadata_raw['Name'].isin(available_names)].set_index('Name')
         df_metadata = df_metadata.loc[df_pct_change.columns]
         
-        # Force float types on binary flags with error handling
-        for col in ['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']:
-            if col in df_metadata.columns:
-                # Convert to string first to handle any mixed types, then to numeric
-                df_metadata[col] = df_metadata[col].astype(str).replace(['True', 'true', '1', 'Yes', 'yes'], '1')
-                df_metadata[col] = df_metadata[col].replace(['False', 'false', '0', 'No', 'no', 'nan', 'NaN'], '0')
-                df_metadata[col] = pd.to_numeric(df_metadata[col], errors='coerce').fillna(0)
-        
-        # Set US T-Bills flags to 0 if it exists in the data
-        if 'US T-Bills' in df_metadata.index:
-            for col in ['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']:
-                if col in df_metadata.columns:
-                    df_metadata.loc['US T-Bills', col] = 0
+        # Force float types on binary flags - using the working approach from rubrics_mvo_final.py
+        df_metadata[['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']] = df_metadata[['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']].astype(float)
+        df_metadata.loc['US T-Bills', ['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']] = 0
         
         # Validate that all required columns exist and are numeric
         required_numeric_cols = ['Rating_Num', 'Duration', 'Current Yield Hdgd']
@@ -312,51 +302,16 @@ if uploaded_file is not None:
         
         metadata = metadata.loc[idx]
         
-        # Convert and clean numeric columns with proper error handling
-        try:
-            rating = pd.to_numeric(metadata['Rating_Num'], errors='coerce').fillna(1).values
-        except Exception as e:
-            rating = np.ones(len(idx))
-            
-        try:
-            duration = pd.to_numeric(metadata['Duration'], errors='coerce').fillna(0).values
-        except Exception as e:
-            duration = np.zeros(len(idx))
-            
-        try:
-            yields = pd.to_numeric(metadata['Current Yield Hdgd'], errors='coerce').fillna(0).values / 100
-        except Exception as e:
-            yields = np.zeros(len(idx))
+        # Extract numeric columns - data is already properly converted in process_data
+        rating = metadata['Rating_Num'].values
+        duration = metadata['Duration'].values
+        yields = metadata['Current Yield Hdgd'].values / 100
         
-        # Convert binary flags to float with error handling
-        try:
-            is_at1 = pd.to_numeric(metadata['Is_AT1'], errors='coerce').fillna(0).values.astype(float)
-        except Exception as e:
-            is_at1 = np.zeros(len(idx))
-            
-        try:
-            is_em = pd.to_numeric(metadata['Is_EM'], errors='coerce').fillna(0).values.astype(float)
-        except Exception as e:
-            is_em = np.zeros(len(idx))
-            
-        try:
-            is_non_ig = pd.to_numeric(metadata['Is_Non_IG'], errors='coerce').fillna(0).values.astype(float)
-        except Exception as e:
-            is_non_ig = np.zeros(len(idx))
-            
-        try:
-            is_hybrid = pd.to_numeric(metadata['Is_Hybrid'], errors='coerce').fillna(0).values.astype(float)
-        except Exception as e:
-            is_hybrid = np.zeros(len(idx))
-        
-        # Convert all to numpy arrays with float64 dtype
-        rating = np.array(rating, dtype=np.float64)
-        duration = np.array(duration, dtype=np.float64)
-        yields = np.array(yields, dtype=np.float64)
-        is_at1 = np.array(is_at1, dtype=np.float64)
-        is_em = np.array(is_em, dtype=np.float64)
-        is_non_ig = np.array(is_non_ig, dtype=np.float64)
-        is_hybrid = np.array(is_hybrid, dtype=np.float64)
+        # Extract binary flags - already converted to float in process_data
+        is_at1 = metadata['Is_AT1'].values
+        is_em = metadata['Is_EM'].values
+        is_non_ig = metadata['Is_Non_IG'].values
+        is_hybrid = metadata['Is_Hybrid'].values
         
         constraints_list = [
             cp.sum(w) == 1,
