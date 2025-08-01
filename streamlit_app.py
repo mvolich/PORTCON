@@ -554,110 +554,72 @@ if uploaded_file is not None:
         # Metrics table
         st.subheader("Portfolio Metrics")
         
-        # Format metrics for display with debugging
-        st.write("DEBUG: Starting metrics formatting...")
-        st.write(f"DEBUG: df_metrics shape: {df_metrics.shape}")
-        st.write(f"DEBUG: df_metrics index: {df_metrics.index.tolist()}")
-        st.write(f"DEBUG: df_metrics dtypes: {df_metrics.dtypes}")
+        # OPTIMIZED APPROACH: Create a clean, reliable metrics display
+        st.write("DEBUG: Creating optimized metrics display...")
         
-        # CRITICAL FIX: Ensure all metrics are numeric before processing
-        st.write("DEBUG: Converting all metrics to numeric first...")
-        df_metrics_display = df_metrics.copy()
+        # Create a fresh DataFrame for display
+        df_metrics_display = pd.DataFrame()
         
-        # Force all rows to be numeric with detailed debugging
-        for row in df_metrics_display.index:
-            st.write(f"DEBUG: Converting row '{row}' to numeric...")
-            st.write(f"DEBUG: Original dtype: {df_metrics_display.loc[row].dtype}")
-            st.write(f"DEBUG: Original sample values: {df_metrics_display.loc[row].head().tolist()}")
-            
-            # More robust conversion
-            try:
-                converted_row = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
-                df_metrics_display.loc[row] = converted_row
-                st.write(f"DEBUG: ✓ Row '{row}' converted successfully to {df_metrics_display.loc[row].dtype}")
-            except Exception as e:
-                st.write(f"DEBUG: ✗ Error converting row '{row}': {e}")
-                # Force conversion by converting to string first, then to numeric
-                try:
-                    string_row = df_metrics_display.loc[row].astype(str)
-                    converted_row = pd.to_numeric(string_row, errors='coerce').fillna(0)
-                    df_metrics_display.loc[row] = converted_row
-                    st.write(f"DEBUG: ✓ Row '{row}' converted via string method to {df_metrics_display.loc[row].dtype}")
-                except Exception as e2:
-                    st.write(f"DEBUG: ✗ String conversion also failed for '{row}': {e2}")
-                    # Last resort: set to zeros
-                    df_metrics_display.loc[row] = 0.0
-                    st.write(f"DEBUG: ⚠️ Row '{row}' set to zeros as fallback")
-        
-        st.write(f"DEBUG: After numeric conversion - dtypes: {df_metrics_display.dtypes}")
-        
-        # CRITICAL: Force the entire DataFrame to be numeric at once
-        st.write("DEBUG: Force converting entire DataFrame to numeric...")
-        df_metrics_display = df_metrics_display.astype(float)
-        st.write(f"DEBUG: After force conversion - dtypes: {df_metrics_display.dtypes}")
-        
-        # FINAL SAFETY CHECK: Convert any remaining object rows to numeric
-        st.write("DEBUG: Final safety check - converting any remaining object rows...")
-        for row in df_metrics_display.index:
-            if df_metrics_display.loc[row].dtype == 'object':
-                st.write(f"DEBUG: Converting problematic row '{row}' to numeric...")
-                try:
-                    # Convert to numeric and replace any problematic values with 0
-                    numeric_values = []
-                    for val in df_metrics_display.loc[row]:
-                        try:
-                            numeric_values.append(float(val))
-                        except (ValueError, TypeError):
-                            numeric_values.append(0.0)
-                    df_metrics_display.loc[row] = numeric_values
-                    st.write(f"DEBUG: ✓ Row '{row}' converted to numeric successfully")
-                except Exception as e:
-                    st.write(f"DEBUG: ✗ Failed to convert row '{row}': {e}")
-                    # Set entire row to zeros as last resort
-                    df_metrics_display.loc[row] = 0.0
-                    st.write(f"DEBUG: ⚠️ Row '{row}' set to zeros as final fallback")
-        
-        st.write(f"DEBUG: After final safety check - dtypes: {df_metrics_display.dtypes}")
-        
-        percent_cols = ['Expected Return', 'Expected Volatility', 'EM Exposure', 'AT1 Exposure',
+        # Define which rows need percentage conversion
+        percent_rows = ['Expected Return', 'Expected Volatility', 'EM Exposure', 'AT1 Exposure',
                        'Non-IG Exposure', 'Hybrid Exposure', 'T-Bill Exposure', 'Avg Yield']
         
-        st.write(f"DEBUG: Processing {len(df_metrics_display.index)} rows...")
+        # Process each row individually with explicit type handling
+        for row in df_metrics.index:
+            st.write(f"DEBUG: Processing {row}...")
+            
+            try:
+                # Get the row data and ensure it's numeric
+                row_data = df_metrics.loc[row].astype(float)
+                
+                if row in percent_rows:
+                    st.write(f"DEBUG: Converting {row} to percentage...")
+                    # Convert to percentage and handle small values
+                    percentage_values = []
+                    for val in row_data:
+                        # Convert to percentage
+                        pct_val = val * 100
+                        # Round to 2 decimal places
+                        pct_val = round(pct_val, 2)
+                        # Handle very small values
+                        if abs(pct_val) < 0.01:
+                            pct_val = 0.0
+                        percentage_values.append(pct_val)
+                    
+                    df_metrics_display.loc[row] = percentage_values
+                    st.write(f"DEBUG: ✓ {row} converted to percentage successfully")
+                    
+                elif row == 'Avg Rating':
+                    st.write(f"DEBUG: Converting {row} to rating scale...")
+                    # Convert to rating scale
+                    rating_values = []
+                    for val in row_data:
+                        try:
+                            rating_val = inverse_rating_scale.get(int(round(val)), f"{val:.2f}")
+                            rating_values.append(rating_val)
+                        except:
+                            rating_values.append(f"{val:.2f}")
+                    
+                    df_metrics_display.loc[row] = rating_values
+                    st.write(f"DEBUG: ✓ {row} converted to rating scale successfully")
+                    
+                else:
+                    st.write(f"DEBUG: Keeping {row} as is...")
+                    # Keep other rows as they are (duration, etc.)
+                    df_metrics_display.loc[row] = row_data.values
+                    st.write(f"DEBUG: ✓ {row} kept as is")
+                    
+            except Exception as e:
+                st.write(f"DEBUG: ✗ Error processing {row}: {e}")
+                # Set to zeros as fallback
+                df_metrics_display.loc[row] = [0.0] * len(df_metrics.columns)
+                st.write(f"DEBUG: ⚠️ {row} set to zeros as fallback")
         
-        # DRASTIC WORKAROUND: Skip threshold fix entirely and handle small values during percentage conversion
-        st.write("DEBUG: Using drastic workaround - skipping threshold fix...")
+        # Set the column names
+        df_metrics_display.columns = df_metrics.columns
         
-        for i, row in enumerate(df_metrics_display.index):
-             st.write(f"DEBUG: Processing row {i+1}/{len(df_metrics_display.index)}: {row}")
-             st.write(f"DEBUG: Row dtype before processing: {df_metrics_display.loc[row].dtype}")
-             st.write(f"DEBUG: Row sample values: {df_metrics_display.loc[row].head().tolist()}")
-             
-             try:
-                 if row in percent_cols:
-                     st.write(f"DEBUG: Converting {row} to percentage with small value handling...")
-                     # Handle small values during percentage conversion
-                     row_data = df_metrics_display.loc[row]
-                     # Convert to percentage first
-                     percentage_data = row_data * 100
-                     # Round to 2 decimal places (this will handle very small values)
-                     percentage_data = percentage_data.round(2)
-                     # Replace any remaining very small values with 0
-                     percentage_data = percentage_data.apply(lambda x: 0.0 if abs(x) < 0.01 else x)
-                     df_metrics_display.loc[row] = percentage_data
-                     st.write(f"DEBUG: ✓ {row} converted successfully")
-                 elif row == 'Avg Rating':
-                     st.write(f"DEBUG: Converting {row} to rating scale...")
-                     # Row should now be numeric, apply rating conversion
-                     df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
-                         lambda x: inverse_rating_scale.get(int(round(x)), f"{x:.2f}")
-                     )
-                     st.write(f"DEBUG: ✓ {row} converted successfully")
-                 else:
-                     st.write(f"DEBUG: Skipping {row} (no conversion needed)")
-             except Exception as e:
-                 st.write(f"DEBUG: ✗ Error processing {row}: {e}")
-                 st.write(f"DEBUG: Error type: {type(e)}")
-                 raise
+        st.write(f"DEBUG: Final metrics display shape: {df_metrics_display.shape}")
+        st.write(f"DEBUG: Final metrics display dtypes: {df_metrics_display.dtypes}")
         
         st.dataframe(df_metrics_display, use_container_width=True)
         
