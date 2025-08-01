@@ -17,11 +17,11 @@ st.set_page_config(
 )
 
 # Add company logo to top right
-col1, col2, col3 = st.columns([3, 1, 2])
+col1, col2, col3 = st.columns([4, 1, 3])
 with col1:
     st.title("Credit Spreads & 1Y Return Analysis")
 with col3:
-    st.markdown('<div style="text-align: right; width: 100%;">', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: right; width: 100%; padding-right: 0; margin-right: 0;">', unsafe_allow_html=True)
     st.image("https://rubricsam.com/wp-content/uploads/2021/01/cropped-rubrics-logo-tight.png", width=250)
     st.markdown('</div>', unsafe_allow_html=True)
 
