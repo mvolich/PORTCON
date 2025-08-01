@@ -591,6 +591,11 @@ if uploaded_file is not None:
         
         st.write(f"DEBUG: After numeric conversion - dtypes: {df_metrics_display.dtypes}")
         
+        # CRITICAL: Force the entire DataFrame to be numeric at once
+        st.write("DEBUG: Force converting entire DataFrame to numeric...")
+        df_metrics_display = df_metrics_display.astype(float)
+        st.write(f"DEBUG: After force conversion - dtypes: {df_metrics_display.dtypes}")
+        
         percent_cols = ['Expected Return', 'Expected Volatility', 'EM Exposure', 'AT1 Exposure',
                        'Non-IG Exposure', 'Hybrid Exposure', 'T-Bill Exposure', 'Avg Yield']
         
@@ -604,13 +609,23 @@ if uploaded_file is not None:
             try:
                 if row in percent_cols:
                     st.write(f"DEBUG: Converting {row} to percentage...")
-                    # Row is already numeric, just multiply by 100
+                    # Ensure row is numeric before processing
+                    if df_metrics_display.loc[row].dtype == 'object':
+                        st.write(f"DEBUG: Row '{row}' is still object, forcing conversion...")
+                        df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
+                    
+                    # Row is now numeric, multiply by 100
                     df_metrics_display.loc[row] = df_metrics_display.loc[row] * 100
                     df_metrics_display.loc[row] = df_metrics_display.loc[row].round(2)
                     st.write(f"DEBUG: ✓ {row} converted successfully")
                 elif row == 'Avg Rating':
                     st.write(f"DEBUG: Converting {row} to rating scale...")
-                    # Row is already numeric, apply rating conversion
+                    # Ensure row is numeric before processing
+                    if df_metrics_display.loc[row].dtype == 'object':
+                        st.write(f"DEBUG: Row '{row}' is still object, forcing conversion...")
+                        df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
+                    
+                    # Row is now numeric, apply rating conversion
                     df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
                         lambda x: inverse_rating_scale.get(int(round(x)), f"{x:.2f}")
                     )
