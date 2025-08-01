@@ -564,9 +564,30 @@ if uploaded_file is not None:
         st.write("DEBUG: Converting all metrics to numeric first...")
         df_metrics_display = df_metrics.copy()
         
-        # Force all rows to be numeric
+        # Force all rows to be numeric with detailed debugging
         for row in df_metrics_display.index:
-            df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
+            st.write(f"DEBUG: Converting row '{row}' to numeric...")
+            st.write(f"DEBUG: Original dtype: {df_metrics_display.loc[row].dtype}")
+            st.write(f"DEBUG: Original sample values: {df_metrics_display.loc[row].head().tolist()}")
+            
+            # More robust conversion
+            try:
+                converted_row = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
+                df_metrics_display.loc[row] = converted_row
+                st.write(f"DEBUG: ✓ Row '{row}' converted successfully to {df_metrics_display.loc[row].dtype}")
+            except Exception as e:
+                st.write(f"DEBUG: ✗ Error converting row '{row}': {e}")
+                # Force conversion by converting to string first, then to numeric
+                try:
+                    string_row = df_metrics_display.loc[row].astype(str)
+                    converted_row = pd.to_numeric(string_row, errors='coerce').fillna(0)
+                    df_metrics_display.loc[row] = converted_row
+                    st.write(f"DEBUG: ✓ Row '{row}' converted via string method to {df_metrics_display.loc[row].dtype}")
+                except Exception as e2:
+                    st.write(f"DEBUG: ✗ String conversion also failed for '{row}': {e2}")
+                    # Last resort: set to zeros
+                    df_metrics_display.loc[row] = 0.0
+                    st.write(f"DEBUG: ⚠️ Row '{row}' set to zeros as fallback")
         
         st.write(f"DEBUG: After numeric conversion - dtypes: {df_metrics_display.dtypes}")
         
