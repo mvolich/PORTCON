@@ -282,11 +282,24 @@ if uploaded_file is not None:
         # Force float types on binary flags with error handling
         for col in ['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']:
             if col in df_metadata.columns:
+                # Convert to string first to handle any mixed types, then to numeric
+                df_metadata[col] = df_metadata[col].astype(str).replace(['True', 'true', '1', 'Yes', 'yes'], '1')
+                df_metadata[col] = df_metadata[col].replace(['False', 'false', '0', 'No', 'no', 'nan', 'NaN'], '0')
                 df_metadata[col] = pd.to_numeric(df_metadata[col], errors='coerce').fillna(0)
         
         # Set US T-Bills flags to 0 if it exists in the data
         if 'US T-Bills' in df_metadata.index:
-            df_metadata.loc['US T-Bills', ['Is_AT1', 'Is_EM', 'Is_Non_IG','Is_Hybrid']] = 0
+            for col in ['Is_AT1', 'Is_EM', 'Is_Non_IG', 'Is_Hybrid']:
+                if col in df_metadata.columns:
+                    df_metadata.loc['US T-Bills', col] = 0
+        
+        # Validate that all required columns exist and are numeric
+        required_numeric_cols = ['Rating_Num', 'Duration', 'Current Yield Hdgd']
+        for col in required_numeric_cols:
+            if col not in df_metadata.columns:
+                raise ValueError(f"Required column '{col}' not found in metadata")
+            if not pd.api.types.is_numeric_dtype(df_metadata[col]):
+                df_metadata[col] = pd.to_numeric(df_metadata[col], errors='coerce').fillna(0)
         
         return df_pct_change, df_metadata
     
@@ -422,12 +435,6 @@ if uploaded_file is not None:
     
     # Process data
     df_pct_change, df_metadata = process_data(df_raw, df_metadata_raw)
-    
-    # Debug: Check data types and missing values
-    st.write("Debug Info:")
-    st.write("Metadata columns:", df_metadata.columns.tolist())
-    st.write("Metadata dtypes:", df_metadata.dtypes.to_dict())
-    st.write("Missing values in metadata:", df_metadata.isnull().sum().to_dict())
     
     # Calculate risk-free rate
     rf_rate_hist = df_pct_change['US T-Bills'].mean() * 252
