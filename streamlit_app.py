@@ -636,13 +636,15 @@ if uploaded_file is not None:
                 df_metrics_display.loc[row] = fixed_data.astype(float)  # Enforce dtype explicitly
                 st.write(f"DEBUG: ✓ Threshold fix applied to {row} with dtype: {df_metrics_display.loc[row].dtype}")
         
-        # CRITICAL STEP: Explicitly force dtype conversion to numeric after threshold fix
-        st.write("DEBUG: Explicitly forcing numeric conversion after threshold fix...")
+        # CRITICAL STEP: Verify all rows are numeric after threshold fix
+        st.write("DEBUG: Verifying numeric dtypes after threshold fix...")
         for row in percent_cols:
             if row in df_metrics_display.index:
-                st.write(f"DEBUG: Forcing numeric conversion for {row}...")
-                df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0.0)
-                st.write(f"DEBUG: ✓ Numeric conversion completed for {row} with dtype: {df_metrics_display.loc[row].dtype}")
+                st.write(f"DEBUG: Verifying {row} has dtype: {df_metrics_display.loc[row].dtype}")
+                if df_metrics_display.loc[row].dtype != 'float64':
+                    st.write(f"DEBUG: ⚠️ {row} is not float64, forcing conversion...")
+                    df_metrics_display.loc[row] = df_metrics_display.loc[row].astype(float)
+                    st.write(f"DEBUG: ✓ {row} now has dtype: {df_metrics_display.loc[row].dtype}")
         
         for i, row in enumerate(df_metrics_display.index):
              st.write(f"DEBUG: Processing row {i+1}/{len(df_metrics_display.index)}: {row}")
