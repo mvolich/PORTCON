@@ -335,7 +335,7 @@ if uploaded_file is not None:
         # Initialize tbill_index variable
         tbill_index = None
         
-        if constraints.get('max_tbill') is not None:
+        if constraints.get('max_tbill') is not None and 'US T-Bills' in idx:
             tbill_index = idx.index('US T-Bills')
             constraints_list.append(w[tbill_index] <= constraints['max_tbill'])
         
