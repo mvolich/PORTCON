@@ -174,9 +174,9 @@ with st.sidebar:
         
         # Non-editable constraints (display only)
         st.markdown("**Fixed Constraints (Cannot be changed):**")
-        st.markdown(f"• Max Non-IG: {constraints['max_non_ig']:.1%}")
-        st.markdown(f"• Max EM: {constraints['max_em']:.1%}")
-        st.markdown(f"• Max T-Bills: {constraints['max_tbill']:.1%}")
+        st.markdown(f"• Max Non-IG: {constraints['max_non_ig']*100:.1f}%")
+        st.markdown(f"• Max EM: {constraints['max_em']*100:.1f}%")
+        st.markdown(f"• Max T-Bills: {constraints['max_tbill']*100:.1f}%")
         
         # Editable constraints
         st.markdown("**Editable Constraints:**")
@@ -191,10 +191,9 @@ with st.sidebar:
                 max_value=0.5,
                 value=constraints['max_at1'],
                 step=0.01,
-                format="%.1%%",
                 help="Maximum Additional Tier 1 capital exposure"
             )
-            st.session_state.fund_constraints[selected_fund]['max_at1'] = new_max_at1
+            st.session_state.fund_constraints[selected_fund]['max_at1'] = float(new_max_at1)
         
         # Duration constraint
         if selected_fund == 'EYF':
@@ -208,7 +207,7 @@ with st.sidebar:
                 step=0.1,
                 help="Maximum portfolio duration"
             )
-            st.session_state.fund_constraints[selected_fund]['max_duration'] = new_max_duration
+            st.session_state.fund_constraints[selected_fund]['max_duration'] = float(new_max_duration)
         
         # Hybrid constraint
         new_max_hybrid = st.slider(
@@ -217,10 +216,9 @@ with st.sidebar:
             max_value=0.5,
             value=constraints['max_hybrid'],
             step=0.01,
-            format="%.1%%",
             help="Maximum hybrid instrument exposure"
         )
-        st.session_state.fund_constraints[selected_fund]['max_hybrid'] = new_max_hybrid
+        st.session_state.fund_constraints[selected_fund]['max_hybrid'] = float(new_max_hybrid)
         
         # Rating constraint
         rating_options = list(rating_scale.keys())
