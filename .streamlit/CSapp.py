@@ -508,7 +508,11 @@ def negative_return_probability_plot(combined_df, min_obs=10):
         hovermode="closest",  # Show tooltip only for the line hovered
         yaxis=dict(range=[0, grouped_stats['percent_negative'].max() + 5]),
         legend_title="Asset Category",
-        height=600
+        height=600,
+        xaxis=dict(
+            categoryorder="array",
+            categoryarray=spread_order
+        )
     )
 
     return fig
