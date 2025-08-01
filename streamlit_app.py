@@ -620,6 +620,84 @@ if uploaded_file is not None:
         
         st.dataframe(df_metrics_display, use_container_width=True)
         
+        # Constraints Budget Usage
+        st.subheader("Constraints Budget Usage")
+        
+        # Calculate constraint usage for each portfolio
+        constraint_usage = {}
+        
+        for portfolio in df_metrics.columns:
+            usage = {}
+            
+            # Get portfolio weights
+            weights = df_weights[portfolio]
+            
+            # Calculate constraint usage
+            usage['Non-IG Usage'] = (weights * df_metadata.loc[weights.index, 'Is_Non_IG']).sum() / constraints['max_non_ig'] * 100
+            usage['EM Usage'] = (weights * df_metadata.loc[weights.index, 'Is_EM']).sum() / constraints['max_em'] * 100
+            usage['AT1 Usage'] = (weights * df_metadata.loc[weights.index, 'Is_AT1']).sum() / constraints['max_at1'] * 100
+            usage['Hybrid Usage'] = (weights * df_metadata.loc[weights.index, 'Is_Hybrid']).sum() / constraints['max_hybrid'] * 100
+            
+            # Duration usage (if constraint exists)
+            if constraints['max_duration'] is not None:
+                avg_duration = (weights * df_metadata.loc[weights.index, 'Duration']).sum()
+                usage['Duration Usage'] = avg_duration / constraints['max_duration'] * 100
+            else:
+                usage['Duration Usage'] = 0.0
+            
+            # T-Bill usage (if US T-Bills exists)
+            if 'US T-Bills' in weights.index:
+                tbill_weight = weights['US T-Bills']
+                usage['T-Bill Usage'] = tbill_weight / constraints['max_tbill'] * 100
+            else:
+                usage['T-Bill Usage'] = 0.0
+            
+            constraint_usage[portfolio] = usage
+        
+        # Create DataFrame for constraint usage
+        df_constraint_usage = pd.DataFrame(constraint_usage).round(2)
+        
+        # Display constraint usage table
+        st.dataframe(df_constraint_usage, use_container_width=True)
+        
+        # Visual representation of constraint usage
+        st.subheader("Constraint Usage Visualization")
+        
+        # Create a bar chart showing constraint usage for the optimal portfolio
+        if 'Sharpe (Hist Avg)' in df_metrics.index:
+            optimal_portfolio = df_metrics.loc['Sharpe (Hist Avg)'].idxmax()
+            
+            # Get constraint usage for optimal portfolio
+            optimal_usage = constraint_usage[optimal_portfolio]
+            
+            # Create bar chart
+            fig_constraints = go.Figure()
+            
+            constraints_list = ['Non-IG Usage', 'EM Usage', 'AT1 Usage', 'Hybrid Usage', 'Duration Usage', 'T-Bill Usage']
+            usage_values = [optimal_usage.get(constraint, 0) for constraint in constraints_list]
+            
+            # Color bars based on usage level
+            colors = ['red' if val > 90 else 'orange' if val > 70 else 'green' for val in usage_values]
+            
+            fig_constraints.add_trace(go.Bar(
+                x=constraints_list,
+                y=usage_values,
+                marker_color=colors,
+                text=[f'{val:.1f}%' for val in usage_values],
+                textposition='auto'
+            ))
+            
+            fig_constraints.update_layout(
+                title=f"Constraint Usage for {optimal_portfolio}",
+                xaxis_title="Constraints",
+                yaxis_title="Usage (%)",
+                yaxis=dict(range=[0, 100]),
+                template="plotly_white",
+                height=400
+            )
+            
+            st.plotly_chart(fig_constraints, use_container_width=True)
+        
         # Optimal portfolio
         st.subheader("Optimal Portfolio")
         
