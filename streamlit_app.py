@@ -566,8 +566,12 @@ if uploaded_file is not None:
         
         for row in df_metrics_display.index:
             if row in percent_cols:
-                df_metrics_display.loc[row] = (df_metrics_display.loc[row] * 100).round(2)
+                # Convert to numeric first to avoid dtype issues
+                df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0) * 100
+                df_metrics_display.loc[row] = df_metrics_display.loc[row].round(2)
             elif row == 'Avg Rating':
+                # Convert to numeric first to avoid dtype issues
+                df_metrics_display.loc[row] = pd.to_numeric(df_metrics_display.loc[row], errors='coerce').fillna(0)
                 df_metrics_display.loc[row] = df_metrics_display.loc[row].apply(
                     lambda x: inverse_rating_scale.get(int(round(x)), f"{x:.2f}")
                 )
