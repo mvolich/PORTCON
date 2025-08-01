@@ -315,8 +315,29 @@ if uploaded_file is not None:
         
         # Debug statements to confirm alignment and numeric correctness
         st.write("Metadata after processing:", metadata.head())
-        st.write("Returns after processing:", df_pct_change.head())
+        st.write("Returns after processing:", returns.head())
         st.write("Metadata dtypes:", metadata.dtypes)
+        
+        # Additional debugging for the specific arrays being used in optimization
+        st.write("Rating array type:", type(rating))
+        st.write("Rating array dtype:", rating.dtype)
+        st.write("Rating array shape:", rating.shape)
+        st.write("Rating array sample:", rating[:5])
+        
+        st.write("Duration array type:", type(duration))
+        st.write("Duration array dtype:", duration.dtype)
+        st.write("Duration array shape:", duration.shape)
+        st.write("Duration array sample:", duration[:5])
+        
+        st.write("Yields array type:", type(yields))
+        st.write("Yields array dtype:", yields.dtype)
+        st.write("Yields array shape:", yields.shape)
+        st.write("Yields array sample:", yields[:5])
+        
+        st.write("Is_AT1 array type:", type(is_at1))
+        st.write("Is_AT1 array dtype:", is_at1.dtype)
+        st.write("Is_AT1 array shape:", is_at1.shape)
+        st.write("Is_AT1 array sample:", is_at1[:5])
         
         # Extract numeric columns - exactly as original file (no explicit casting to avoid NaN issues)
         rating = metadata['Rating_Num'].values
@@ -329,13 +350,52 @@ if uploaded_file is not None:
         is_non_ig = metadata['Is_Non_IG'].values
         is_hybrid = metadata['Is_Hybrid'].values
         
-        # Create constraints
+        # Create constraints with debugging
+        st.write("Creating constraints step by step...")
+        
         constraints_list = [cp.sum(w) == 1, w >= 0]
-        constraints_list.append(is_non_ig @ w <= constraints['max_non_ig'])
-        constraints_list.append(is_em @ w <= constraints['max_em'])
-        constraints_list.append(is_at1 @ w <= constraints['max_at1'])
-        constraints_list.append(is_hybrid @ w <= constraints['max_hybrid'])
-        constraints_list.append(rating @ w >= constraints['min_rating'])
+        st.write("✓ Basic constraints added")
+        
+        # Debug each constraint creation
+        try:
+            constraints_list.append(is_non_ig @ w <= constraints['max_non_ig'])
+            st.write("✓ Non-IG constraint added")
+        except Exception as e:
+            st.write(f"✗ Error adding Non-IG constraint: {e}")
+            st.write(f"is_non_ig type: {type(is_non_ig)}, dtype: {is_non_ig.dtype}")
+            raise
+            
+        try:
+            constraints_list.append(is_em @ w <= constraints['max_em'])
+            st.write("✓ EM constraint added")
+        except Exception as e:
+            st.write(f"✗ Error adding EM constraint: {e}")
+            st.write(f"is_em type: {type(is_em)}, dtype: {is_em.dtype}")
+            raise
+            
+        try:
+            constraints_list.append(is_at1 @ w <= constraints['max_at1'])
+            st.write("✓ AT1 constraint added")
+        except Exception as e:
+            st.write(f"✗ Error adding AT1 constraint: {e}")
+            st.write(f"is_at1 type: {type(is_at1)}, dtype: {is_at1.dtype}")
+            raise
+            
+        try:
+            constraints_list.append(is_hybrid @ w <= constraints['max_hybrid'])
+            st.write("✓ Hybrid constraint added")
+        except Exception as e:
+            st.write(f"✗ Error adding Hybrid constraint: {e}")
+            st.write(f"is_hybrid type: {type(is_hybrid)}, dtype: {is_hybrid.dtype}")
+            raise
+            
+        try:
+            constraints_list.append(rating @ w >= constraints['min_rating'])
+            st.write("✓ Rating constraint added")
+        except Exception as e:
+            st.write(f"✗ Error adding Rating constraint: {e}")
+            st.write(f"rating type: {type(rating)}, dtype: {rating.dtype}")
+            raise
         
         # Initialize tbill_index variable
         tbill_index = None
@@ -347,13 +407,32 @@ if uploaded_file is not None:
         if constraints['max_duration'] is not None:
             constraints_list.append(duration @ w <= constraints['max_duration'])
         
-        constraints_list.append(mu @ w >= target_return)
+        try:
+            constraints_list.append(mu @ w >= target_return)
+            st.write("✓ Return constraint added")
+        except Exception as e:
+            st.write(f"✗ Error adding return constraint: {e}")
+            st.write(f"mu type: {type(mu)}, dtype: {mu.dtype}")
+            raise
+        
+        st.write("Problem formulation:")
+        st.write(f"Objective: Minimize quadratic form with covariance matrix")
+        st.write(f"Number of constraints: {len(constraints_list)}")
+        st.write(f"Number of variables: {n}")
         
         problem = cp.Problem(cp.Minimize(cp.quad_form(w, cov)), constraints_list)
         
+        st.write("About to solve the problem...")
+        st.write(f"Problem status before solve: {problem.status}")
+        
         try:
+            st.write("Calling problem.solve()...")
             problem.solve()
+            st.write("✓ Problem solved successfully")
+            st.write(f"Problem status after solve: {problem.status}")
         except Exception as e:
+            st.write(f"✗ Error during problem.solve(): {e}")
+            st.write(f"Error type: {type(e)}")
             raise ValueError(f"Optimization solver error: {str(e)}")
         
         if w.value is None:
