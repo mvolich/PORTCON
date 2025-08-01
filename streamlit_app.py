@@ -444,16 +444,87 @@ if uploaded_file is not None:
         rating_avg = (rating @ w.value).item()
         tbill_weight = w.value[tbill_index].item() if tbill_index is not None else 0.0
         
+        # Debug metrics calculation
+        st.write("Calculating metrics...")
+        
+        try:
+            expected_return = (mu @ w.value).item()
+            st.write(f"✓ Expected Return calculated: {expected_return}")
+        except Exception as e:
+            st.write(f"✗ Error calculating Expected Return: {e}")
+            raise
+            
+        try:
+            expected_volatility = np.sqrt((w.value).T @ cov @ w.value).item()
+            st.write(f"✓ Expected Volatility calculated: {expected_volatility}")
+        except Exception as e:
+            st.write(f"✗ Error calculating Expected Volatility: {e}")
+            raise
+            
+        try:
+            avg_yield = (yields @ w.value).item()
+            st.write(f"✓ Avg Yield calculated: {avg_yield}")
+        except Exception as e:
+            st.write(f"✗ Error calculating Avg Yield: {e}")
+            raise
+            
+        try:
+            avg_duration = (duration @ w.value).item()
+            st.write(f"✓ Avg Duration calculated: {avg_duration}")
+        except Exception as e:
+            st.write(f"✗ Error calculating Avg Duration: {e}")
+            raise
+            
+        try:
+            st.write(f"✓ Avg Rating calculated: {rating_avg}")
+        except Exception as e:
+            st.write(f"✗ Error with Avg Rating: {e}")
+            raise
+            
+        try:
+            em_exposure = (is_em @ w.value).item()
+            st.write(f"✓ EM Exposure calculated: {em_exposure}")
+        except Exception as e:
+            st.write(f"✗ Error calculating EM Exposure: {e}")
+            raise
+            
+        try:
+            at1_exposure = (is_at1 @ w.value).item()
+            st.write(f"✓ AT1 Exposure calculated: {at1_exposure}")
+        except Exception as e:
+            st.write(f"✗ Error calculating AT1 Exposure: {e}")
+            raise
+            
+        try:
+            non_ig_exposure = (is_non_ig @ w.value).item()
+            st.write(f"✓ Non-IG Exposure calculated: {non_ig_exposure}")
+        except Exception as e:
+            st.write(f"✗ Error calculating Non-IG Exposure: {e}")
+            raise
+            
+        try:
+            hybrid_exposure = (is_hybrid @ w.value).item()
+            st.write(f"✓ Hybrid Exposure calculated: {hybrid_exposure}")
+        except Exception as e:
+            st.write(f"✗ Error calculating Hybrid Exposure: {e}")
+            raise
+            
+        try:
+            st.write(f"✓ T-Bill Exposure calculated: {tbill_weight}")
+        except Exception as e:
+            st.write(f"✗ Error with T-Bill Exposure: {e}")
+            raise
+        
         metrics = {
-            'Expected Return': (mu @ w.value).item(),
-            'Expected Volatility': np.sqrt((w.value).T @ cov @ w.value).item(),
-            'Avg Yield': (yields @ w.value).item(),
-            'Avg Duration': (duration @ w.value).item(),
+            'Expected Return': expected_return,
+            'Expected Volatility': expected_volatility,
+            'Avg Yield': avg_yield,
+            'Avg Duration': avg_duration,
             'Avg Rating': rating_avg,
-            'EM Exposure': (is_em @ w.value).item(),
-            'AT1 Exposure': (is_at1 @ w.value).item(),
-            'Non-IG Exposure': (is_non_ig @ w.value).item(),
-            'Hybrid Exposure': (is_hybrid @ w.value).item(),
+            'EM Exposure': em_exposure,
+            'AT1 Exposure': at1_exposure,
+            'Non-IG Exposure': non_ig_exposure,
+            'Hybrid Exposure': hybrid_exposure,
             'T-Bill Exposure': tbill_weight
         }
         
