@@ -399,11 +399,13 @@ if uploaded_file is not None:
         max_return = min_return * 2
         
         targets = np.arange(min_return, max_return + step_size, step_size)
+        st.write(f"Number of targets to process: {len(targets)}")
         
         returns_list, risks_list, metrics_dict, weights_dict = [], [], {}, {}
         
-        for target in targets:
+        for i, target in enumerate(targets):
             try:
+                st.write(f"Processing target {i+1}/{len(targets)}: {target:.6f}")
                 w, m = optimise_portfolio(
                     fund_name, df_returns, df_metadata, fund_constraints, rf_rate_hist, target
                 )
@@ -412,7 +414,10 @@ if uploaded_file is not None:
                 label = f"Portfolio {len(metrics_dict)+1}"
                 metrics_dict[label] = m
                 weights_dict[label] = w
-            except Exception:
+                st.write(f"✓ Portfolio {len(metrics_dict)} built successfully")
+            except Exception as e:
+                st.write(f"✗ Error on target {i+1}: {e}")
+                st.write(f"Error type: {type(e)}")
                 continue
         
         if not metrics_dict:
