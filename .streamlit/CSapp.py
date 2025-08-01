@@ -578,9 +578,13 @@ def negative_return_probability_plot(combined_df, show_excluded=True, selected_c
         x_vals = cat_df['Spread Category']
         y_vals = cat_df['percent_negative']
         
-        # Only include data points that meet the tolerance (investable)
-        investable_y = [y for y in y_vals if y <= tolerance]
-        visible_data.extend(investable_y)
+        if show_excluded:
+            # Include all data points when showing excluded ranges
+            visible_data.extend(y_vals)
+        else:
+            # Only include data points that meet the tolerance (investable)
+            investable_y = [y for y in y_vals if y <= tolerance]
+            visible_data.extend(investable_y)
     
     # Set y-axis range based on visible data
     if visible_data:
