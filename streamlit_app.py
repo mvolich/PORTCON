@@ -27,6 +27,9 @@ RUBRICS_COLORS = {
     'orange': '#CF4520'
 }
 
+# Constraints version for auto-reinitialization
+CONSTRAINTS_VERSION = 1
+
 # Custom CSS for Rubrics branding
 st.markdown(f"""
 <style>
@@ -164,8 +167,10 @@ with st.sidebar:
         }
         
         # Initialize session state for constraints
-        if 'fund_constraints' not in st.session_state:
+        if ('fund_constraints' not in st.session_state 
+            or st.session_state.get('constraints_version') != CONSTRAINTS_VERSION):
             st.session_state.fund_constraints = default_constraints.copy()
+            st.session_state['constraints_version'] = CONSTRAINTS_VERSION
         
         # Display current fund constraints
         st.subheader(f"Current Constraints for {selected_fund}")
@@ -389,6 +394,58 @@ if uploaded_file is not None:
         
         return weights, metrics
     
+    def find_max_return_only(fund_name, returns, metadata, constraints):
+        """Find maximum achievable return without risk minimization"""
+        mu = returns.mean().values * 252
+        
+        idx = returns.columns.tolist()
+        n = len(idx)
+        w = cp.Variable(n)
+        
+        metadata = metadata.loc[idx]
+        
+        # Extract numeric columns
+        rating = metadata['Rating_Num'].values
+        duration = metadata['Duration'].values
+        
+        # Extract binary flags
+        is_at1 = metadata['Is_AT1'].values
+        is_em = metadata['Is_EM'].values
+        is_non_ig = metadata['Is_Non_IG'].values
+        is_hybrid = metadata['Is_Hybrid'].values
+        
+        # Create constraints (same as optimise_portfolio but without risk minimization)
+        constraints_list = [cp.sum(w) == 1, w >= 0]
+        constraints_list.append(is_non_ig @ w <= constraints['max_non_ig'])
+        constraints_list.append(is_em @ w <= constraints['max_em'])
+        constraints_list.append(is_at1 @ w <= constraints['max_at1'])
+        constraints_list.append(is_hybrid @ w <= constraints['max_hybrid'])
+        constraints_list.append(rating @ w >= constraints['min_rating'])
+        
+        # Initialize tbill_index variable
+        tbill_index = None
+        
+        if constraints.get('max_tbill') is not None and 'US T-Bills' in idx:
+            tbill_index = idx.index('US T-Bills')
+            constraints_list.append(w[tbill_index] <= constraints['max_tbill'])
+        
+        if constraints['max_duration'] is not None:
+            constraints_list.append(duration @ w <= constraints['max_duration'])
+        
+        # Maximize return instead of minimizing risk
+        problem = cp.Problem(cp.Maximize(mu @ w), constraints_list)
+        
+        try:
+            problem.solve()
+        except Exception as e:
+            raise ValueError(f"Max return optimization error: {str(e)}")
+        
+        if w.value is None:
+            raise ValueError("No solution found for max return optimization")
+        
+        max_return = (mu @ w.value).item()
+        return max_return
+    
     def generate_efficient_frontier(fund_name, df_returns, df_metadata, fund_constraints, rf_rate_hist, step_size=0.0015):
         """Generate efficient frontier"""
         # Find minimum return portfolio
@@ -401,7 +458,11 @@ if uploaded_file is not None:
             raise ValueError(f"Cannot build min return portfolio for {fund_name}: {e}")
         
         min_return = m_min['Expected Return']
-        max_return = min_return * 2
+        try:
+            max_return_discovered = find_max_return_only(fund_name, df_returns, df_metadata, fund_constraints)
+            max_return = max(max_return_discovered, min_return * 2)
+        except:
+            max_return = min_return * 2
         
         targets = np.arange(min_return, max_return + step_size, step_size)
         
