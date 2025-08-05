@@ -9,6 +9,9 @@ import io
 import base64
 from PIL import Image
 import requests
+import copy
+import json
+import hashlib
 
 # Page configuration
 st.set_page_config(
@@ -26,9 +29,6 @@ RUBRICS_COLORS = {
     'grey': '#D8D7DF',
     'orange': '#CF4520'
 }
-
-# Constraints version for auto-reinitialization
-CONSTRAINTS_VERSION = 1
 
 # Custom CSS for Rubrics branding
 st.markdown(f"""
@@ -167,10 +167,25 @@ with st.sidebar:
         }
         
         # Initialize session state for constraints
-        if ('fund_constraints' not in st.session_state 
-            or st.session_state.get('constraints_version') != CONSTRAINTS_VERSION):
-            st.session_state.fund_constraints = default_constraints.copy()
-            st.session_state['constraints_version'] = CONSTRAINTS_VERSION
+        # Compute a stable hash of your defaults
+        _defaults_json = json.dumps(default_constraints, sort_keys=True)
+        _defaults_hash = hashlib.md5(_defaults_json.encode()).hexdigest()
+        
+        # If first run OR defaults have changed, reset both constraints and widget state
+        if (
+            'fund_constraints' not in st.session_state
+            or st.session_state.get('default_constraints_hash') != _defaults_hash
+        ):
+            # Deep-copy so nested dicts don't share references
+            st.session_state.fund_constraints = copy.deepcopy(default_constraints)
+            st.session_state['default_constraints_hash'] = _defaults_hash
+            
+            # Remove any old slider/selectbox state so they re-init with new defaults
+            for fund in default_constraints:
+                st.session_state.pop(f"at1_slider_{fund}", None)
+                st.session_state.pop(f"duration_slider_{fund}", None)
+                st.session_state.pop(f"hybrid_slider_{fund}", None)
+                st.session_state.pop(f"rating_select_{fund}", None)
         
         # Display current fund constraints
         st.subheader(f"Current Constraints for {selected_fund}")
