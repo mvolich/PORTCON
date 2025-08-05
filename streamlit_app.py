@@ -167,6 +167,10 @@ with st.sidebar:
         if 'fund_constraints' not in st.session_state:
             st.session_state.fund_constraints = default_constraints.copy()
         
+        # Initialize constraint change tracking
+        if 'constraint_hash' not in st.session_state:
+            st.session_state.constraint_hash = hash(str(st.session_state.fund_constraints))
+        
         # Display current fund constraints
         st.subheader(f"Current Constraints for {selected_fund}")
         
@@ -191,7 +195,8 @@ with st.sidebar:
                 max_value=0.5,
                 value=constraints['max_at1'],
                 step=0.01,
-                help="Maximum Additional Tier 1 capital exposure"
+                help="Maximum Additional Tier 1 capital exposure",
+                key=f"at1_slider_{selected_fund}"
             )
             st.session_state.fund_constraints[selected_fund]['max_at1'] = float(new_max_at1)
         
@@ -205,7 +210,8 @@ with st.sidebar:
                 max_value=10.0,
                 value=constraints['max_duration'] if constraints['max_duration'] else 5.0,
                 step=0.1,
-                help="Maximum portfolio duration"
+                help="Maximum portfolio duration",
+                key=f"duration_slider_{selected_fund}"
             )
             st.session_state.fund_constraints[selected_fund]['max_duration'] = float(new_max_duration)
         
@@ -216,7 +222,8 @@ with st.sidebar:
             max_value=0.5,
             value=constraints['max_hybrid'],
             step=0.01,
-            help="Maximum hybrid instrument exposure"
+            help="Maximum hybrid instrument exposure",
+            key=f"hybrid_slider_{selected_fund}"
         )
         st.session_state.fund_constraints[selected_fund]['max_hybrid'] = float(new_max_hybrid)
         
@@ -227,13 +234,21 @@ with st.sidebar:
             "Minimum Rating",
             options=rating_options,
             index=rating_options.index(current_rating),
-            help="Minimum average portfolio rating"
+            help="Minimum average portfolio rating",
+            key=f"rating_select_{selected_fund}"
         )
         st.session_state.fund_constraints[selected_fund]['min_rating'] = rating_scale[new_min_rating]
+        
+        # Check if constraints have changed
+        current_hash = hash(str(st.session_state.fund_constraints))
+        if current_hash != st.session_state.constraint_hash:
+            st.session_state.constraint_hash = current_hash
+            st.rerun()
         
         # Reset button
         if st.button("Reset to Defaults"):
             st.session_state.fund_constraints = default_constraints.copy()
+            st.session_state.constraint_hash = hash(str(st.session_state.fund_constraints))
             st.rerun()
 
 # Main content area
@@ -487,10 +502,13 @@ if uploaded_file is not None:
             f"Min Rating: {inverse_rating_scale[st.session_state.fund_constraints[selected_fund]['min_rating']]}")
     
     try:
-        returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
-            selected_fund, df_pct_change, df_metadata, 
-            st.session_state.fund_constraints[selected_fund], rf_rate_hist
-        )
+        # Show optimization status
+        with st.spinner("Running portfolio optimization with current constraints..."):
+            returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
+                selected_fund, df_pct_change, df_metadata, 
+                st.session_state.fund_constraints[selected_fund], rf_rate_hist
+            )
+        st.success("✅ Optimization completed successfully!")
         
         # Efficient frontier plot
         st.subheader("Efficient Frontier")
