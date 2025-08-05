@@ -854,61 +854,66 @@ if uploaded_file is not None:
         
         st.plotly_chart(fig_frontier, use_container_width=True)
         
-        # Portfolio weights visualization
-        st.subheader("Portfolio Composition Across Frontier")
+        # Create three columns for Portfolio Composition, Metrics, and Constraints
+        col1, col2, col3 = st.columns(3)
         
-        df_pct = df_weights * 100
-        df_pct = df_pct.div(df_pct.sum(axis=0), axis=1) * 100
-        
-        fig_weights = go.Figure()
-        
-        for asset in df_pct.index:
-            fig_weights.add_trace(go.Scatter(
-                x=df_pct.columns,
-                y=df_pct.loc[asset],
-                mode='lines+markers',
-                stackgroup='one',
-                name=asset,
-                hovertemplate="<b>Asset:</b> %{fullData.name}<br><b>Portfolio:</b> %{x}<br><b>Weight:</b> %{y:.2f}%"
-            ))
-        
-        # Mark the optimal portfolio on the category axis
-        if 'Sharpe (Hist Avg)' in df_metrics.index:
-            fig_weights.add_shape(
-                type="line",
-                xref="x",  # treat x-values as category labels
-                yref="paper",  # span full height
-                x0=optimal_portfolio,
-                x1=optimal_portfolio,
-                y0=0,
-                y1=1,
-                line=dict(color="white", width=3, dash="dash")
+        with col1:
+            # Portfolio weights visualization
+            st.subheader("Portfolio Composition Across Frontier")
+            
+            df_pct = df_weights * 100
+            df_pct = df_pct.div(df_pct.sum(axis=0), axis=1) * 100
+            
+            fig_weights = go.Figure()
+            
+            for asset in df_pct.index:
+                fig_weights.add_trace(go.Scatter(
+                    x=df_pct.columns,
+                    y=df_pct.loc[asset],
+                    mode='lines+markers',
+                    stackgroup='one',
+                    name=asset,
+                    hovertemplate="<b>Asset:</b> %{fullData.name}<br><b>Portfolio:</b> %{x}<br><b>Weight:</b> %{y:.2f}%"
+                ))
+            
+            # Mark the optimal portfolio on the category axis
+            if 'Sharpe (Hist Avg)' in df_metrics.index:
+                fig_weights.add_shape(
+                    type="line",
+                    xref="x",  # treat x-values as category labels
+                    yref="paper",  # span full height
+                    x0=optimal_portfolio,
+                    x1=optimal_portfolio,
+                    y0=0,
+                    y1=1,
+                    line=dict(color="white", width=3, dash="dash")
+                )
+                # Add a label above it
+                fig_weights.add_annotation(
+                    x=optimal_portfolio,
+                    y=1.02,
+                    xref="x",
+                    yref="paper",
+                    text="Optimal Portfolio",
+                    showarrow=False,
+                    yanchor="bottom",
+                    font=dict(color="white")
+                )
+            
+            fig_weights.update_layout(
+                title=f"{selected_fund} Portfolio Composition",
+                xaxis_title="Portfolios Along Efficient Frontier",
+                yaxis_title="Weight (%)",
+                yaxis=dict(range=[0, 100]),
+                template="plotly_white",
+                height=500
             )
-            # Add a label above it
-            fig_weights.add_annotation(
-                x=optimal_portfolio,
-                y=1.02,
-                xref="x",
-                yref="paper",
-                text="Optimal Portfolio",
-                showarrow=False,
-                yanchor="bottom",
-                font=dict(color="white")
-            )
+            
+            st.plotly_chart(fig_weights, use_container_width=True)
         
-        fig_weights.update_layout(
-            title=f"{selected_fund} Portfolio Composition",
-            xaxis_title="Portfolios Along Efficient Frontier",
-            yaxis_title="Weight (%)",
-            yaxis=dict(range=[0, 100]),
-            template="plotly_white",
-            height=500
-        )
-        
-        st.plotly_chart(fig_weights, use_container_width=True)
-        
-        # Metrics table
-        st.subheader("Portfolio Metrics")
+        with col2:
+            # Metrics table
+            st.subheader("Portfolio Metrics")
         
         # Create a clean, reliable metrics display
         # Create a fresh DataFrame for display with proper structure
@@ -969,134 +974,135 @@ if uploaded_file is not None:
         
         st.dataframe(df_metrics_display, use_container_width=True)
         
-        # Constraints Budget Usage
-        st.subheader("🔒 Constraints Budget Usage")
-        
-        # Get current constraints from session state
-        current_constraints = st.session_state.fund_constraints[selected_fund]
-        
-        # Calculate constraint usage for each portfolio
-        constraint_usage = {}
-        
-        for portfolio in df_metrics.columns:
-            usage = {}
+        with col3:
+            # Constraints Budget Usage
+            st.subheader("🔒 Constraints Budget Usage")
             
-            # Get portfolio weights
-            weights = df_weights[portfolio]
+            # Get current constraints from session state
+            current_constraints = st.session_state.fund_constraints[selected_fund]
             
-            # Ensure weights are numeric
-            weights = pd.to_numeric(weights, errors='coerce').fillna(0)
+            # Calculate constraint usage for each portfolio
+            constraint_usage = {}
             
-            # Calculate constraint usage using current constraints
-            # Ensure all values are numeric before calculations
-            at1_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_AT1'], errors='coerce').fillna(0)).sum()
-            em_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_EM'], errors='coerce').fillna(0)).sum()
-            non_ig_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_Non_IG'], errors='coerce').fillna(0)).sum()
-            hybrid_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_Hybrid'], errors='coerce').fillna(0)).sum()
+            for portfolio in df_metrics.columns:
+                usage = {}
+                
+                # Get portfolio weights
+                weights = df_weights[portfolio]
+                
+                # Ensure weights are numeric
+                weights = pd.to_numeric(weights, errors='coerce').fillna(0)
+                
+                # Calculate constraint usage using current constraints
+                # Ensure all values are numeric before calculations
+                at1_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_AT1'], errors='coerce').fillna(0)).sum()
+                em_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_EM'], errors='coerce').fillna(0)).sum()
+                non_ig_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_Non_IG'], errors='coerce').fillna(0)).sum()
+                hybrid_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_Hybrid'], errors='coerce').fillna(0)).sum()
+                
+                usage[f'AT1 (≤{current_constraints["max_at1"]*100:.1f}%)'] = (at1_exposure / current_constraints['max_at1']) * 100
+                usage[f'EM (≤{current_constraints["max_em"]*100:.1f}%)'] = (em_exposure / current_constraints['max_em']) * 100
+                usage[f'Non-IG (≤{current_constraints["max_non_ig"]*100:.1f}%)'] = (non_ig_exposure / current_constraints['max_non_ig']) * 100
+                usage[f'Hybrid (≤{current_constraints["max_hybrid"]*100:.1f}%)'] = (hybrid_exposure / current_constraints['max_hybrid']) * 100
+                
+                # Handle T-Bills separately
+                if 'US T-Bills' in weights.index:
+                    tbill_weight = pd.to_numeric(weights['US T-Bills'], errors='coerce')
+                    if pd.isna(tbill_weight):
+                        tbill_weight = 0.0
+                    usage[f'T-Bills (≤{current_constraints["max_tbill"]*100:.1f}%)'] = (tbill_weight / current_constraints['max_tbill']) * 100
+                else:
+                    usage[f'T-Bills (≤{current_constraints["max_tbill"]*100:.1f}%)'] = 0.0
+                
+                # Duration usage (if constraint exists)
+                if current_constraints['max_duration'] is not None:
+                    duration_values = pd.to_numeric(df_metadata.loc[weights.index, 'Duration'], errors='coerce').fillna(0)
+                    avg_duration = (weights * duration_values).sum()
+                    usage[f'Duration (≤{current_constraints["max_duration"]} yrs)'] = (avg_duration / current_constraints['max_duration']) * 100
+                else:
+                    usage['Duration (≤∞ yrs)'] = 0.0
+                
+                # Rating usage (showing how close to minimum rating)
+                rating_values = pd.to_numeric(df_metadata.loc[weights.index, 'Rating_Num'], errors='coerce').fillna(0)
+                avg_rating = (weights * rating_values).sum()
+                min_rating = current_constraints['min_rating']
+                rating_usage = ((avg_rating - min_rating) / (20 - min_rating)) * 100  # Scale from min_rating to AAA (20)
+                usage[f'Rating (≥{inverse_rating_scale[min_rating]})'] = max(0, rating_usage)
+                
+                constraint_usage[portfolio] = usage
             
-            usage[f'AT1 (≤{current_constraints["max_at1"]*100:.1f}%)'] = (at1_exposure / current_constraints['max_at1']) * 100
-            usage[f'EM (≤{current_constraints["max_em"]*100:.1f}%)'] = (em_exposure / current_constraints['max_em']) * 100
-            usage[f'Non-IG (≤{current_constraints["max_non_ig"]*100:.1f}%)'] = (non_ig_exposure / current_constraints['max_non_ig']) * 100
-            usage[f'Hybrid (≤{current_constraints["max_hybrid"]*100:.1f}%)'] = (hybrid_exposure / current_constraints['max_hybrid']) * 100
+            # Create DataFrame for constraint usage
+            df_constraint_usage = pd.DataFrame(constraint_usage).round(2)
             
-            # Handle T-Bills separately
-            if 'US T-Bills' in weights.index:
-                tbill_weight = pd.to_numeric(weights['US T-Bills'], errors='coerce')
-                if pd.isna(tbill_weight):
-                    tbill_weight = 0.0
-                usage[f'T-Bills (≤{current_constraints["max_tbill"]*100:.1f}%)'] = (tbill_weight / current_constraints['max_tbill']) * 100
-            else:
-                usage[f'T-Bills (≤{current_constraints["max_tbill"]*100:.1f}%)'] = 0.0
+            # Apply color coding to the dataframe
+            def color_constraint_usage(val):
+                if pd.isna(val):
+                    return ''
+                if val > 90:
+                    return 'background-color: #ffcccc'  # Red for >90%
+                elif val > 70:
+                    return 'background-color: #ffebcc'  # Orange for 70-90%
+                else:
+                    return 'background-color: #ccffcc'  # Green for <70%
             
-            # Duration usage (if constraint exists)
-            if current_constraints['max_duration'] is not None:
-                duration_values = pd.to_numeric(df_metadata.loc[weights.index, 'Duration'], errors='coerce').fillna(0)
-                avg_duration = (weights * duration_values).sum()
-                usage[f'Duration (≤{current_constraints["max_duration"]} yrs)'] = (avg_duration / current_constraints['max_duration']) * 100
-            else:
-                usage['Duration (≤∞ yrs)'] = 0.0
+            # Display constraint usage table with color coding
+            st.dataframe(df_constraint_usage.style.applymap(color_constraint_usage), use_container_width=True)
             
-            # Rating usage (showing how close to minimum rating)
-            rating_values = pd.to_numeric(df_metadata.loc[weights.index, 'Rating_Num'], errors='coerce').fillna(0)
-            avg_rating = (weights * rating_values).sum()
-            min_rating = current_constraints['min_rating']
-            rating_usage = ((avg_rating - min_rating) / (20 - min_rating)) * 100  # Scale from min_rating to AAA (20)
-            usage[f'Rating (≥{inverse_rating_scale[min_rating]})'] = max(0, rating_usage)
+            # Visual representation of constraint usage
+            st.subheader("Constraint Usage Visualization")
             
-            constraint_usage[portfolio] = usage
-        
-        # Create DataFrame for constraint usage
-        df_constraint_usage = pd.DataFrame(constraint_usage).round(2)
-        
-        # Apply color coding to the dataframe
-        def color_constraint_usage(val):
-            if pd.isna(val):
-                return ''
-            if val > 90:
-                return 'background-color: #ffcccc'  # Red for >90%
-            elif val > 70:
-                return 'background-color: #ffebcc'  # Orange for 70-90%
-            else:
-                return 'background-color: #ccffcc'  # Green for <70%
-        
-        # Display constraint usage table with color coding
-        st.dataframe(df_constraint_usage.style.applymap(color_constraint_usage), use_container_width=True)
-        
-        # Visual representation of constraint usage
-        st.subheader("Constraint Usage Visualization")
-        
-        # Create a bar chart showing constraint usage for the optimal portfolio
-        if 'Sharpe (Hist Avg)' in df_metrics.index:
-            # Get Sharpe ratios and expected returns
-            sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
-            expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
-            
-            # Find the maximum Sharpe ratio
-            max_sharpe = sharpe_row.max()
-            
-            # Find all portfolios with the maximum Sharpe ratio
-            max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
-            
-            if len(max_sharpe_portfolios) == 1:
-                # Only one portfolio has the maximum Sharpe ratio
-                optimal_portfolio = max_sharpe_portfolios[0]
-            else:
-                # Multiple portfolios have the same maximum Sharpe ratio
-                # Select the one with the highest expected return
-                tie_break_returns = expected_return_row[max_sharpe_portfolios]
-                optimal_portfolio = tie_break_returns.idxmax()
-            
-            # Get constraint usage for optimal portfolio
-            optimal_usage = constraint_usage[optimal_portfolio]
-            
-            # Create bar chart
-            fig_constraints = go.Figure()
-            
-            # Use the new constraint names with limits
-            constraints_list = list(optimal_usage.keys())
-            usage_values = list(optimal_usage.values())
-            
-            # Color bars based on usage level
-            colors = ['red' if val > 90 else 'orange' if val > 70 else 'green' for val in usage_values]
-            
-            fig_constraints.add_trace(go.Bar(
-                x=constraints_list,
-                y=usage_values,
-                marker_color=colors,
-                text=[f'{val:.1f}%' for val in usage_values],
-                textposition='auto'
-            ))
-            
-            fig_constraints.update_layout(
-                title=f"Constraint Usage for {optimal_portfolio}",
-                xaxis_title="Constraints",
-                yaxis_title="Usage (%)",
-                yaxis=dict(range=[0, 100]),
-                template="plotly_white",
-                height=400
-            )
-            
-            st.plotly_chart(fig_constraints, use_container_width=True)
+            # Create a bar chart showing constraint usage for the optimal portfolio
+            if 'Sharpe (Hist Avg)' in df_metrics.index:
+                # Get Sharpe ratios and expected returns
+                sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
+                expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
+                
+                # Find the maximum Sharpe ratio
+                max_sharpe = sharpe_row.max()
+                
+                # Find all portfolios with the maximum Sharpe ratio
+                max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
+                
+                if len(max_sharpe_portfolios) == 1:
+                    # Only one portfolio has the maximum Sharpe ratio
+                    optimal_portfolio = max_sharpe_portfolios[0]
+                else:
+                    # Multiple portfolios have the same maximum Sharpe ratio
+                    # Select the one with the highest expected return
+                    tie_break_returns = expected_return_row[max_sharpe_portfolios]
+                    optimal_portfolio = tie_break_returns.idxmax()
+                
+                # Get constraint usage for optimal portfolio
+                optimal_usage = constraint_usage[optimal_portfolio]
+                
+                # Create bar chart
+                fig_constraints = go.Figure()
+                
+                # Use the new constraint names with limits
+                constraints_list = list(optimal_usage.keys())
+                usage_values = list(optimal_usage.values())
+                
+                # Color bars based on usage level
+                colors = ['red' if val > 90 else 'orange' if val > 70 else 'green' for val in usage_values]
+                
+                fig_constraints.add_trace(go.Bar(
+                    x=constraints_list,
+                    y=usage_values,
+                    marker_color=colors,
+                    text=[f'{val:.1f}%' for val in usage_values],
+                    textposition='auto'
+                ))
+                
+                fig_constraints.update_layout(
+                    title=f"Constraint Usage for {optimal_portfolio}",
+                    xaxis_title="Constraints",
+                    yaxis_title="Usage (%)",
+                    yaxis=dict(range=[0, 100]),
+                    template="plotly_white",
+                    height=400
+                )
+                
+                st.plotly_chart(fig_constraints, use_container_width=True)
         
         # Optimal portfolio
         st.subheader("Optimal Portfolio")
