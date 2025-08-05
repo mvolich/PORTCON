@@ -324,7 +324,7 @@ if uploaded_file is not None:
             if not pd.api.types.is_numeric_dtype(df_metadata[col]):
                 df_metadata[col] = pd.to_numeric(df_metadata[col], errors='coerce').fillna(0)
         
-        return df_pct_change, df_metadata
+        return df_pct_change, df_metadata, df_common
     
     def optimise_portfolio(fund_name, returns, metadata, constraints, rf, target_return):
         """Portfolio optimization function"""
@@ -510,7 +510,7 @@ if uploaded_file is not None:
         return returns_list, risks_list, df_metrics, df_weights
     
     # Process data
-    df_pct_change, df_metadata = process_data(df_raw, df_metadata_raw)
+    df_pct_change, df_metadata, df_common = process_data(df_raw, df_metadata_raw)
     
     # Calculate risk-free rate
     if 'US T-Bills' in df_pct_change.columns:
@@ -560,9 +560,15 @@ if uploaded_file is not None:
         st.write("4. **Return Calculation**: Computed percentage changes")
         st.write("5. **Metadata Alignment**: Matched asset names with metadata")
         
-        # Show processed data
-        st.write("**Processed Data (Common Dates):**")
-        st.dataframe(df_common.head(), use_container_width=True)
+        # Show processed data summary
+        st.write("**Processed Data Summary:**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Assets", len(df_common.columns))
+        with col2:
+            st.metric("Time Period", f"{len(df_common)} days")
+        with col3:
+            st.metric("Date Range", f"{df_common.index.min().strftime('%Y-%m-%d')} to {df_common.index.max().strftime('%Y-%m-%d')}")
         
         # Show data coverage
         st.write("**Data Coverage Analysis:**")
@@ -570,14 +576,10 @@ if uploaded_file is not None:
         for col in df_common.columns:
             first_date = df_common[col].first_valid_index()
             last_date = df_common[col].last_valid_index()
-            first_last_dates[col] = {'First Date': first_date, 'Last Date': last_date}
+            first_last_dates[col] = {'First Date': first_date.strftime('%Y-%m-%d'), 'Last Date': last_date.strftime('%Y-%m-%d')}
         
         coverage_df = pd.DataFrame.from_dict(first_last_dates, orient='index')
         st.dataframe(coverage_df, use_container_width=True)
-        
-        # Show data types
-        st.write("**Data Types:**")
-        st.write(df_common.dtypes)
         
         st.subheader("📈 Time Series Analysis")
         
@@ -586,7 +588,7 @@ if uploaded_file is not None:
         for col in df_pct_change.columns:
             fig_pct.add_trace(go.Scatter(
                 x=df_pct_change.index, 
-                y=df_pct_change[col],
+                y=df_pct_change[col] * 100,  # Convert to percentage
                 mode='lines', 
                 name=col, 
                 hovertemplate='<b>%{fullData.name}</b><br>Date: %{x}<br>Return: %{y:.2f}%<extra></extra>'
@@ -597,7 +599,9 @@ if uploaded_file is not None:
             xaxis_title="Date",
             yaxis_title="Daily Return (%)",
             hovermode="closest",
-            height=500
+            height=500,
+            showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         st.plotly_chart(fig_pct, use_container_width=True)
         
@@ -619,26 +623,34 @@ if uploaded_file is not None:
             xaxis_title="Date",
             yaxis_title="Index Value",
             hovermode="closest",
-            height=500
+            height=500,
+            showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         st.plotly_chart(fig_rebased, use_container_width=True)
         
         st.subheader("📊 Asset Performance Summary")
-        st.dataframe(results_df, use_container_width=True)
+        
+        # Enhanced performance summary with additional metrics
+        performance_summary = pd.DataFrame({
+            'Annualised Return (%)': annualized_returns,
+            'Annualised Volatility (%)': annualized_std,
+            'Sharpe Ratio': (annualized_returns / annualized_std).round(3),
+            'Min Daily Return (%)': (df_pct_change.min() * 100).round(2),
+            'Max Daily Return (%)': (df_pct_change.max() * 100).round(2)
+        }).sort_values(by='Sharpe Ratio', ascending=False)
+        
+        st.dataframe(performance_summary, use_container_width=True)
         
         # Distribution analysis
         st.subheader("📊 Return Distributions")
         
-        # Create subplots for histograms
-        n_cols = 3
-        n_assets = len(df_pct_change.columns)
-        n_rows = int(np.ceil(n_assets / n_cols))
-        
+        # Create interactive histogram with dropdown
         fig_dist = go.Figure()
         
         for i, col in enumerate(df_pct_change.columns):
             fig_dist.add_trace(go.Histogram(
-                x=df_pct_change[col],
+                x=df_pct_change[col] * 100,  # Convert to percentage
                 name=col,
                 nbinsx=50,
                 opacity=0.7,
@@ -678,8 +690,10 @@ if uploaded_file is not None:
         # Summary statistics
         st.write("**Distribution Statistics:**")
         summary_stats = pd.DataFrame({
-            'Skewness': df_pct_change.skew(),
-            'Kurtosis': df_pct_change.kurtosis()
+            'Skewness': df_pct_change.skew().round(3),
+            'Kurtosis': df_pct_change.kurtosis().round(3),
+            'VaR (95%)': (df_pct_change.quantile(0.05) * 100).round(2),
+            'CVaR (95%)': (df_pct_change[df_pct_change <= df_pct_change.quantile(0.05)].mean() * 100).round(2)
         }).sort_values(by='Skewness', key=abs, ascending=False)
         st.dataframe(summary_stats, use_container_width=True)
         
@@ -711,6 +725,33 @@ if uploaded_file is not None:
         )
         
         st.plotly_chart(fig_corr, use_container_width=True)
+        
+        # Additional insights
+        st.subheader("💡 Key Insights")
+        
+        # Find highest and lowest correlations
+        corr_matrix_no_diag = correlation_matrix.where(~np.eye(correlation_matrix.shape[0], dtype=bool))
+        max_corr = corr_matrix_no_diag.max().max()
+        min_corr = corr_matrix_no_diag.min().min()
+        
+        # Find the pair with highest correlation
+        max_corr_pair = np.where(correlation_matrix == max_corr)
+        min_corr_pair = np.where(correlation_matrix == min_corr)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Highest Correlation:**")
+            st.write(f"{correlation_matrix.columns[max_corr_pair[1][0]]} vs {correlation_matrix.columns[max_corr_pair[0][0]]}: {max_corr:.3f}")
+        
+        with col2:
+            st.write("**Lowest Correlation:**")
+            st.write(f"{correlation_matrix.columns[min_corr_pair[1][0]]} vs {correlation_matrix.columns[min_corr_pair[0][0]]}: {min_corr:.3f}")
+        
+        # Best performing assets
+        st.write("**Top 3 Assets by Sharpe Ratio:**")
+        top_assets = performance_summary.head(3)
+        for i, (asset, row) in enumerate(top_assets.iterrows(), 1):
+            st.write(f"{i}. **{asset}**: Return: {row['Annualised Return (%)']:.2f}%, Vol: {row['Annualised Volatility (%)']:.2f}%, Sharpe: {row['Sharpe Ratio']:.3f}")
     
     # Run optimization for selected fund
     st.header(f"🎯 {selected_fund} Portfolio Optimization")
