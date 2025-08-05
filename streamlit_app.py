@@ -478,6 +478,14 @@ if uploaded_file is not None:
     # Run optimization for selected fund
     st.header(f"🎯 {selected_fund} Portfolio Optimization")
     
+    # Display current constraints being used for optimization
+    st.info(f"**Current constraints for {selected_fund}:** AT1: {st.session_state.fund_constraints[selected_fund]['max_at1']*100:.1f}%, "
+            f"EM: {st.session_state.fund_constraints[selected_fund]['max_em']*100:.1f}%, "
+            f"Non-IG: {st.session_state.fund_constraints[selected_fund]['max_non_ig']*100:.1f}%, "
+            f"Hybrid: {st.session_state.fund_constraints[selected_fund]['max_hybrid']*100:.1f}%, "
+            f"Duration: {st.session_state.fund_constraints[selected_fund]['max_duration'] if st.session_state.fund_constraints[selected_fund]['max_duration'] else 'None'} yrs, "
+            f"Min Rating: {inverse_rating_scale[st.session_state.fund_constraints[selected_fund]['min_rating']]}")
+    
     try:
         returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
             selected_fund, df_pct_change, df_metadata, 
@@ -554,9 +562,7 @@ if uploaded_file is not None:
         # Metrics table
         st.subheader("Portfolio Metrics")
         
-        # OPTIMIZED APPROACH: Create a clean, reliable metrics display
-        st.write("DEBUG: Creating optimized metrics display...")
-        
+        # Create a clean, reliable metrics display
         # Create a fresh DataFrame for display with proper structure
         df_metrics_display = pd.DataFrame(index=df_metrics.index, columns=df_metrics.columns)
         
@@ -566,14 +572,11 @@ if uploaded_file is not None:
         
         # Process each row individually with explicit type handling
         for row in df_metrics.index:
-            st.write(f"DEBUG: Processing {row}...")
-            
             try:
                 # Get the row data and ensure it's numeric
                 row_data = df_metrics.loc[row].astype(float)
                 
                 if row in percent_rows:
-                    st.write(f"DEBUG: Converting {row} to percentage...")
                     # Convert to percentage and handle small values
                     percentage_values = []
                     for val in row_data:
@@ -587,10 +590,8 @@ if uploaded_file is not None:
                         percentage_values.append(pct_val)
                     
                     df_metrics_display.loc[row] = percentage_values
-                    st.write(f"DEBUG: ✓ {row} converted to percentage successfully")
                     
                 elif row == 'Avg Rating':
-                    st.write(f"DEBUG: Converting {row} to rating scale...")
                     # Convert to rating scale
                     rating_values = []
                     for val in row_data:
@@ -601,27 +602,30 @@ if uploaded_file is not None:
                             rating_values.append(f"{val:.2f}")
                     
                     df_metrics_display.loc[row] = rating_values
-                    st.write(f"DEBUG: ✓ {row} converted to rating scale successfully")
+                    
+                elif row == 'Avg Duration':
+                    # Round duration values to 2 decimal places
+                    duration_values = []
+                    for val in row_data:
+                        duration_values.append(round(val, 2))
+                    
+                    df_metrics_display.loc[row] = duration_values
                     
                 else:
-                    st.write(f"DEBUG: Keeping {row} as is...")
-                    # Keep other rows as they are (duration, etc.)
+                    # Keep other rows as they are
                     df_metrics_display.loc[row] = row_data.values
-                    st.write(f"DEBUG: ✓ {row} kept as is")
                     
             except Exception as e:
-                st.write(f"DEBUG: ✗ Error processing {row}: {e}")
                 # Set to zeros as fallback
                 df_metrics_display.loc[row] = [0.0] * len(df_metrics.columns)
-                st.write(f"DEBUG: ⚠️ {row} set to zeros as fallback")
-        
-        st.write(f"DEBUG: Final metrics display shape: {df_metrics_display.shape}")
-        st.write(f"DEBUG: Final metrics display dtypes: {df_metrics_display.dtypes}")
         
         st.dataframe(df_metrics_display, use_container_width=True)
         
         # Constraints Budget Usage
         st.subheader("🔒 Constraints Budget Usage")
+        
+        # Get current constraints from session state
+        current_constraints = st.session_state.fund_constraints[selected_fund]
         
         # Calculate constraint usage for each portfolio
         constraint_usage = {}
@@ -632,23 +636,23 @@ if uploaded_file is not None:
             # Get portfolio weights
             weights = df_weights[portfolio]
             
-            # Calculate constraint usage
-            usage['AT1 (≤15%)'] = (weights * df_metadata.loc[weights.index, 'Is_AT1']).sum() / constraints['max_at1'] * 100
-            usage['EM (≤30%)'] = (weights * df_metadata.loc[weights.index, 'Is_EM']).sum() / constraints['max_em'] * 100
-            usage['Non-IG (≤25%)'] = (weights * df_metadata.loc[weights.index, 'Is_Non_IG']).sum() / constraints['max_non_ig'] * 100
-            usage['Hybrid (≤15%)'] = (weights * df_metadata.loc[weights.index, 'Is_Hybrid']).sum() / constraints['max_hybrid'] * 100
-            usage['T-Bills (≤20%)'] = weights['US T-Bills'] / constraints['max_tbill'] * 100 if 'US T-Bills' in weights.index else 0.0
+            # Calculate constraint usage using current constraints
+            usage[f'AT1 (≤{current_constraints["max_at1"]*100:.1f}%)'] = (weights * df_metadata.loc[weights.index, 'Is_AT1']).sum() / current_constraints['max_at1'] * 100
+            usage[f'EM (≤{current_constraints["max_em"]*100:.1f}%)'] = (weights * df_metadata.loc[weights.index, 'Is_EM']).sum() / current_constraints['max_em'] * 100
+            usage[f'Non-IG (≤{current_constraints["max_non_ig"]*100:.1f}%)'] = (weights * df_metadata.loc[weights.index, 'Is_Non_IG']).sum() / current_constraints['max_non_ig'] * 100
+            usage[f'Hybrid (≤{current_constraints["max_hybrid"]*100:.1f}%)'] = (weights * df_metadata.loc[weights.index, 'Is_Hybrid']).sum() / current_constraints['max_hybrid'] * 100
+            usage[f'T-Bills (≤{current_constraints["max_tbill"]*100:.1f}%)'] = weights['US T-Bills'] / current_constraints['max_tbill'] * 100 if 'US T-Bills' in weights.index else 0.0
             
             # Duration usage (if constraint exists)
-            if constraints['max_duration'] is not None:
+            if current_constraints['max_duration'] is not None:
                 avg_duration = (weights * df_metadata.loc[weights.index, 'Duration']).sum()
-                usage[f'Duration (≤{constraints["max_duration"]} yrs)'] = avg_duration / constraints['max_duration'] * 100
+                usage[f'Duration (≤{current_constraints["max_duration"]} yrs)'] = avg_duration / current_constraints['max_duration'] * 100
             else:
                 usage['Duration (≤∞ yrs)'] = 0.0
             
             # Rating usage (showing how close to minimum rating)
             avg_rating = (weights * df_metadata.loc[weights.index, 'Rating_Num']).sum()
-            min_rating = constraints['min_rating']
+            min_rating = current_constraints['min_rating']
             rating_usage = ((avg_rating - min_rating) / (20 - min_rating)) * 100  # Scale from min_rating to AAA (20)
             usage[f'Rating (≥{inverse_rating_scale[min_rating]})'] = max(0, rating_usage)
             
