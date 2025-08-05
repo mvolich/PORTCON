@@ -1001,7 +1001,9 @@ if uploaded_file is not None:
             
             # Handle T-Bills separately
             if 'US T-Bills' in weights.index:
-                tbill_weight = pd.to_numeric(weights['US T-Bills'], errors='coerce').fillna(0)
+                tbill_weight = pd.to_numeric(weights['US T-Bills'], errors='coerce')
+                if pd.isna(tbill_weight):
+                    tbill_weight = 0.0
                 usage[f'T-Bills (≤{current_constraints["max_tbill"]*100:.1f}%)'] = (tbill_weight / current_constraints['max_tbill']) * 100
             else:
                 usage[f'T-Bills (≤{current_constraints["max_tbill"]*100:.1f}%)'] = 0.0
