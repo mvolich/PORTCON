@@ -872,15 +872,28 @@ if uploaded_file is not None:
                 hovertemplate="<b>Asset:</b> %{fullData.name}<br><b>Portfolio:</b> %{x}<br><b>Weight:</b> %{y:.2f}%"
             ))
         
-        # Add vertical line for optimal portfolio
+        # Mark the optimal portfolio on the category axis
         if 'Sharpe (Hist Avg)' in df_metrics.index:
-            fig_weights.add_vline(
+            fig_weights.add_shape(
+                type="line",
+                xref="x",  # treat x-values as category labels
+                yref="paper",  # span full height
+                x0=optimal_portfolio,
+                x1=optimal_portfolio,
+                y0=0,
+                y1=1,
+                line=dict(color="white", width=3, dash="dash")
+            )
+            # Add a label above it
+            fig_weights.add_annotation(
                 x=optimal_portfolio,
-                line_dash="dash",
-                line_color="white",
-                line_width=3,
-                annotation_text="Optimal Portfolio",
-                annotation_position="top left"
+                y=1.02,
+                xref="x",
+                yref="paper",
+                text="Optimal Portfolio",
+                showarrow=False,
+                yanchor="bottom",
+                font=dict(color="white")
             )
         
         fig_weights.update_layout(
