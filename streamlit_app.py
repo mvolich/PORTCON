@@ -538,22 +538,179 @@ if uploaded_file is not None:
     with col3:
         st.metric("Trading Days", len(df_pct_change))
     
-    # Asset performance table
-    st.subheader("Asset Performance Summary")
-    st.dataframe(results_df, use_container_width=True)
-    
-    # Correlation heatmap
-    st.subheader("Asset Correlation Matrix")
-    correlation_matrix = df_pct_change.corr()
-    
-    fig_corr = px.imshow(
-        correlation_matrix,
-        color_continuous_scale='RdBu',
-        aspect='auto',
-        title="Asset Correlation Matrix"
-    )
-    fig_corr.update_layout(height=600)
-    st.plotly_chart(fig_corr, use_container_width=True)
+    # Exploratory Data Analysis Section
+    with st.expander("🔍 Exploratory Data Analysis", expanded=False):
+        st.subheader("📊 Data Processing Workflow")
+        
+        # Show raw data structure
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Raw Data Structure (Index List):**")
+            st.dataframe(df_raw.head(), use_container_width=True)
+        
+        with col2:
+            st.write("**Metadata Structure (Sheet2):**")
+            st.dataframe(df_metadata_raw.head(), use_container_width=True)
+        
+        # Show data processing steps
+        st.write("**Data Processing Steps:**")
+        st.write("1. **Date/Value Column Separation**: Identified date and value columns from raw data")
+        st.write("2. **Common Date Alignment**: Found overlapping dates across all assets")
+        st.write("3. **Data Merging**: Combined all series on common dates")
+        st.write("4. **Return Calculation**: Computed percentage changes")
+        st.write("5. **Metadata Alignment**: Matched asset names with metadata")
+        
+        # Show processed data
+        st.write("**Processed Data (Common Dates):**")
+        st.dataframe(df_common.head(), use_container_width=True)
+        
+        # Show data coverage
+        st.write("**Data Coverage Analysis:**")
+        first_last_dates = {}
+        for col in df_common.columns:
+            first_date = df_common[col].first_valid_index()
+            last_date = df_common[col].last_valid_index()
+            first_last_dates[col] = {'First Date': first_date, 'Last Date': last_date}
+        
+        coverage_df = pd.DataFrame.from_dict(first_last_dates, orient='index')
+        st.dataframe(coverage_df, use_container_width=True)
+        
+        # Show data types
+        st.write("**Data Types:**")
+        st.write(df_common.dtypes)
+        
+        st.subheader("📈 Time Series Analysis")
+        
+        # Percentage change over time
+        fig_pct = go.Figure()
+        for col in df_pct_change.columns:
+            fig_pct.add_trace(go.Scatter(
+                x=df_pct_change.index, 
+                y=df_pct_change[col],
+                mode='lines', 
+                name=col, 
+                hovertemplate='<b>%{fullData.name}</b><br>Date: %{x}<br>Return: %{y:.2f}%<extra></extra>'
+            ))
+        
+        fig_pct.update_layout(
+            title="Daily Returns Over Time",
+            xaxis_title="Date",
+            yaxis_title="Daily Return (%)",
+            hovermode="closest",
+            height=500
+        )
+        st.plotly_chart(fig_pct, use_container_width=True)
+        
+        # Rebased indices
+        df_rebased = df_common / df_common.iloc[0] * 100
+        fig_rebased = go.Figure()
+        
+        for col in df_rebased.columns:
+            fig_rebased.add_trace(go.Scatter(
+                x=df_rebased.index, 
+                y=df_rebased[col],
+                mode='lines', 
+                name=col, 
+                hovertemplate='<b>%{fullData.name}</b><br>Date: %{x}<br>Value: %{y:.2f}<extra></extra>'
+            ))
+        
+        fig_rebased.update_layout(
+            title="Rebased Index Values (Base = 100)",
+            xaxis_title="Date",
+            yaxis_title="Index Value",
+            hovermode="closest",
+            height=500
+        )
+        st.plotly_chart(fig_rebased, use_container_width=True)
+        
+        st.subheader("📊 Asset Performance Summary")
+        st.dataframe(results_df, use_container_width=True)
+        
+        # Distribution analysis
+        st.subheader("📊 Return Distributions")
+        
+        # Create subplots for histograms
+        n_cols = 3
+        n_assets = len(df_pct_change.columns)
+        n_rows = int(np.ceil(n_assets / n_cols))
+        
+        fig_dist = go.Figure()
+        
+        for i, col in enumerate(df_pct_change.columns):
+            fig_dist.add_trace(go.Histogram(
+                x=df_pct_change[col],
+                name=col,
+                nbinsx=50,
+                opacity=0.7,
+                visible=False if i > 0 else True
+            ))
+        
+        # Add buttons for each asset
+        buttons = []
+        for i, col in enumerate(df_pct_change.columns):
+            visibility = [False] * len(df_pct_change.columns)
+            visibility[i] = True
+            buttons.append(
+                dict(
+                    label=col,
+                    method="update",
+                    args=[{"visible": visibility}]
+                )
+            )
+        
+        fig_dist.update_layout(
+            title="Return Distribution by Asset (Use dropdown to switch)",
+            xaxis_title="Daily Return (%)",
+            yaxis_title="Frequency",
+            updatemenus=[{
+                "buttons": buttons,
+                "direction": "down",
+                "showactive": True,
+                "x": 0.1,
+                "xanchor": "left",
+                "y": 1.1,
+                "yanchor": "top"
+            }],
+            height=500
+        )
+        st.plotly_chart(fig_dist, use_container_width=True)
+        
+        # Summary statistics
+        st.write("**Distribution Statistics:**")
+        summary_stats = pd.DataFrame({
+            'Skewness': df_pct_change.skew(),
+            'Kurtosis': df_pct_change.kurtosis()
+        }).sort_values(by='Skewness', key=abs, ascending=False)
+        st.dataframe(summary_stats, use_container_width=True)
+        
+        st.subheader("🔗 Asset Correlation Matrix")
+        
+        # Interactive correlation matrix
+        correlation_matrix = df_pct_change.corr()
+        
+        fig_corr = go.Figure(data=go.Heatmap(
+            z=correlation_matrix.values,
+            x=correlation_matrix.columns,
+            y=correlation_matrix.columns,
+            colorscale='RdBu',
+            zmid=0,
+            text=np.round(correlation_matrix.values, 2),
+            texttemplate="%{text}",
+            textfont={"size": 10},
+            hoverongaps=False,
+            hovertemplate='<b>%{y}</b> vs <b>%{x}</b><br>Correlation: %{z:.3f}<extra></extra>'
+        ))
+        
+        fig_corr.update_layout(
+            title="Asset Correlation Matrix",
+            xaxis_title="Assets",
+            yaxis_title="Assets",
+            height=600,
+            xaxis={'side': 'bottom'},
+            yaxis={'side': 'left'}
+        )
+        
+        st.plotly_chart(fig_corr, use_container_width=True)
     
     # Run optimization for selected fund
     st.header(f"🎯 {selected_fund} Portfolio Optimization")
@@ -577,6 +734,32 @@ if uploaded_file is not None:
         
         # Efficient frontier plot
         st.subheader("Efficient Frontier")
+        
+        # Determine optimal portfolio for marking
+        if 'Sharpe (Hist Avg)' in df_metrics.index:
+            # Get Sharpe ratios and expected returns
+            sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
+            expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
+            
+            # Find the maximum Sharpe ratio
+            max_sharpe = sharpe_row.max()
+            
+            # Find all portfolios with the maximum Sharpe ratio
+            max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
+            
+            if len(max_sharpe_portfolios) == 1:
+                # Only one portfolio has the maximum Sharpe ratio
+                optimal_portfolio = max_sharpe_portfolios[0]
+            else:
+                # Multiple portfolios have the same maximum Sharpe ratio
+                # Select the one with the highest expected return
+                tie_break_returns = expected_return_row[max_sharpe_portfolios]
+                optimal_portfolio = tie_break_returns.idxmax()
+            
+            # Find the index of the optimal portfolio in the lists
+            optimal_idx = df_metrics.columns.get_loc(optimal_portfolio)
+            optimal_risk = risks_list[optimal_idx]
+            optimal_return = returns_list[optimal_idx]
         
         # Create hover text
         hover_texts = []
@@ -602,6 +785,23 @@ if uploaded_file is not None:
             line=dict(color=RUBRICS_COLORS['blue'], width=3),
             marker=dict(color=RUBRICS_COLORS['orange'], size=8)
         ))
+        
+        # Add optimal portfolio marker
+        if 'Sharpe (Hist Avg)' in df_metrics.index:
+            fig_frontier.add_trace(go.Scatter(
+                x=[optimal_risk],
+                y=[optimal_return],
+                mode='markers',
+                name='Optimal Portfolio',
+                marker=dict(
+                    color='yellow',
+                    size=15,
+                    symbol='star',
+                    line=dict(color='white', width=2)
+                ),
+                text=[f"<b>Optimal Portfolio</b><br>Expected Return: {optimal_return*100:.2f}%<br>Volatility: {optimal_risk*100:.2f}%<br>Sharpe: {max_sharpe:.2f}"],
+                hoverinfo='text'
+            ))
         
         fig_frontier.update_layout(
             title=f"{selected_fund} Efficient Frontier",
@@ -630,6 +830,17 @@ if uploaded_file is not None:
                 name=asset,
                 hovertemplate="<b>Asset:</b> %{fullData.name}<br><b>Portfolio:</b> %{x}<br><b>Weight:</b> %{y:.2f}%"
             ))
+        
+        # Add vertical line for optimal portfolio
+        if 'Sharpe (Hist Avg)' in df_metrics.index:
+            fig_weights.add_vline(
+                x=optimal_portfolio,
+                line_dash="dash",
+                line_color="white",
+                line_width=3,
+                annotation_text="Optimal Portfolio",
+                annotation_position="top left"
+            )
         
         fig_weights.update_layout(
             title=f"{selected_fund} Portfolio Composition",
@@ -763,7 +974,24 @@ if uploaded_file is not None:
         
         # Create a bar chart showing constraint usage for the optimal portfolio
         if 'Sharpe (Hist Avg)' in df_metrics.index:
-            optimal_portfolio = df_metrics.loc['Sharpe (Hist Avg)'].idxmax()
+            # Get Sharpe ratios and expected returns
+            sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
+            expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
+            
+            # Find the maximum Sharpe ratio
+            max_sharpe = sharpe_row.max()
+            
+            # Find all portfolios with the maximum Sharpe ratio
+            max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
+            
+            if len(max_sharpe_portfolios) == 1:
+                # Only one portfolio has the maximum Sharpe ratio
+                optimal_portfolio = max_sharpe_portfolios[0]
+            else:
+                # Multiple portfolios have the same maximum Sharpe ratio
+                # Select the one with the highest expected return
+                tie_break_returns = expected_return_row[max_sharpe_portfolios]
+                optimal_portfolio = tie_break_returns.idxmax()
             
             # Get constraint usage for optimal portfolio
             optimal_usage = constraint_usage[optimal_portfolio]
@@ -801,8 +1029,25 @@ if uploaded_file is not None:
         st.subheader("Optimal Portfolio")
         
         if 'Sharpe (Hist Avg)' in df_metrics.index:
+            # Get Sharpe ratios and expected returns
             sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
-            optimal_portfolio = sharpe_row.idxmax()
+            expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
+            
+            # Find the maximum Sharpe ratio
+            max_sharpe = sharpe_row.max()
+            
+            # Find all portfolios with the maximum Sharpe ratio
+            max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
+            
+            if len(max_sharpe_portfolios) == 1:
+                # Only one portfolio has the maximum Sharpe ratio
+                optimal_portfolio = max_sharpe_portfolios[0]
+            else:
+                # Multiple portfolios have the same maximum Sharpe ratio
+                # Select the one with the highest expected return
+                tie_break_returns = expected_return_row[max_sharpe_portfolios]
+                optimal_portfolio = tie_break_returns.idxmax()
+            
             optimal_sharpe = sharpe_row[optimal_portfolio]
         else:
             st.error("Sharpe (Hist Avg) row not found in metrics")
