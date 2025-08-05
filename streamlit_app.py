@@ -167,10 +167,6 @@ with st.sidebar:
         if 'fund_constraints' not in st.session_state:
             st.session_state.fund_constraints = default_constraints.copy()
         
-        # Initialize constraint change tracking
-        if 'constraint_hash' not in st.session_state:
-            st.session_state.constraint_hash = hash(str(st.session_state.fund_constraints))
-        
         # Display current fund constraints
         st.subheader(f"Current Constraints for {selected_fund}")
         
@@ -239,16 +235,9 @@ with st.sidebar:
         )
         st.session_state.fund_constraints[selected_fund]['min_rating'] = rating_scale[new_min_rating]
         
-        # Check if constraints have changed
-        current_hash = hash(str(st.session_state.fund_constraints))
-        if current_hash != st.session_state.constraint_hash:
-            st.session_state.constraint_hash = current_hash
-            st.rerun()
-        
         # Reset button
         if st.button("Reset to Defaults"):
             st.session_state.fund_constraints = default_constraints.copy()
-            st.session_state.constraint_hash = hash(str(st.session_state.fund_constraints))
             st.rerun()
 
 # Main content area
