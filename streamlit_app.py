@@ -338,15 +338,15 @@ if uploaded_file is not None:
         metadata = metadata.loc[idx]
         
         # Extract numeric columns - exactly as original file
-        rating = metadata['Rating_Num'].values
-        duration = metadata['Duration'].values
-        yields = metadata['Current Yield Hdgd'].values / 100
+        rating = pd.to_numeric(metadata['Rating_Num'], errors='coerce').fillna(0).values
+        duration = pd.to_numeric(metadata['Duration'], errors='coerce').fillna(0).values
+        yields = pd.to_numeric(metadata['Current Yield Hdgd'], errors='coerce').fillna(0).values / 100
         
         # Extract binary flags - exactly as original file
-        is_at1 = metadata['Is_AT1'].values
-        is_em = metadata['Is_EM'].values
-        is_non_ig = metadata['Is_Non_IG'].values
-        is_hybrid = metadata['Is_Hybrid'].values
+        is_at1 = pd.to_numeric(metadata['Is_AT1'], errors='coerce').fillna(0).values
+        is_em = pd.to_numeric(metadata['Is_EM'], errors='coerce').fillna(0).values
+        is_non_ig = pd.to_numeric(metadata['Is_Non_IG'], errors='coerce').fillna(0).values
+        is_hybrid = pd.to_numeric(metadata['Is_Hybrid'], errors='coerce').fillna(0).values
         
         # Create constraints
         constraints_list = [cp.sum(w) == 1, w >= 0]
@@ -420,14 +420,14 @@ if uploaded_file is not None:
         metadata = metadata.loc[idx]
         
         # Extract numeric columns
-        rating = metadata['Rating_Num'].values
-        duration = metadata['Duration'].values
+        rating = pd.to_numeric(metadata['Rating_Num'], errors='coerce').fillna(0).values
+        duration = pd.to_numeric(metadata['Duration'], errors='coerce').fillna(0).values
         
         # Extract binary flags
-        is_at1 = metadata['Is_AT1'].values
-        is_em = metadata['Is_EM'].values
-        is_non_ig = metadata['Is_Non_IG'].values
-        is_hybrid = metadata['Is_Hybrid'].values
+        is_at1 = pd.to_numeric(metadata['Is_AT1'], errors='coerce').fillna(0).values
+        is_em = pd.to_numeric(metadata['Is_EM'], errors='coerce').fillna(0).values
+        is_non_ig = pd.to_numeric(metadata['Is_Non_IG'], errors='coerce').fillna(0).values
+        is_hybrid = pd.to_numeric(metadata['Is_Hybrid'], errors='coerce').fillna(0).values
         
         # Create constraints (same as optimise_portfolio but without risk minimization)
         constraints_list = [cp.sum(w) == 1, w >= 0]
@@ -971,22 +971,39 @@ if uploaded_file is not None:
             # Get portfolio weights
             weights = df_weights[portfolio]
             
+            # Ensure weights are numeric
+            weights = pd.to_numeric(weights, errors='coerce').fillna(0)
+            
             # Calculate constraint usage using current constraints
-            usage[f'AT1 (≤{current_constraints["max_at1"]*100:.1f}%)'] = (weights * df_metadata.loc[weights.index, 'Is_AT1']).sum() / current_constraints['max_at1'] * 100
-            usage[f'EM (≤{current_constraints["max_em"]*100:.1f}%)'] = (weights * df_metadata.loc[weights.index, 'Is_EM']).sum() / current_constraints['max_em'] * 100
-            usage[f'Non-IG (≤{current_constraints["max_non_ig"]*100:.1f}%)'] = (weights * df_metadata.loc[weights.index, 'Is_Non_IG']).sum() / current_constraints['max_non_ig'] * 100
-            usage[f'Hybrid (≤{current_constraints["max_hybrid"]*100:.1f}%)'] = (weights * df_metadata.loc[weights.index, 'Is_Hybrid']).sum() / current_constraints['max_hybrid'] * 100
-            usage[f'T-Bills (≤{current_constraints["max_tbill"]*100:.1f}%)'] = weights['US T-Bills'] / current_constraints['max_tbill'] * 100 if 'US T-Bills' in weights.index else 0.0
+            # Ensure all values are numeric before calculations
+            at1_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_AT1'], errors='coerce').fillna(0)).sum()
+            em_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_EM'], errors='coerce').fillna(0)).sum()
+            non_ig_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_Non_IG'], errors='coerce').fillna(0)).sum()
+            hybrid_exposure = (weights * pd.to_numeric(df_metadata.loc[weights.index, 'Is_Hybrid'], errors='coerce').fillna(0)).sum()
+            
+            usage[f'AT1 (≤{current_constraints["max_at1"]*100:.1f}%)'] = (at1_exposure / current_constraints['max_at1']) * 100
+            usage[f'EM (≤{current_constraints["max_em"]*100:.1f}%)'] = (em_exposure / current_constraints['max_em']) * 100
+            usage[f'Non-IG (≤{current_constraints["max_non_ig"]*100:.1f}%)'] = (non_ig_exposure / current_constraints['max_non_ig']) * 100
+            usage[f'Hybrid (≤{current_constraints["max_hybrid"]*100:.1f}%)'] = (hybrid_exposure / current_constraints['max_hybrid']) * 100
+            
+            # Handle T-Bills separately
+            if 'US T-Bills' in weights.index:
+                tbill_weight = pd.to_numeric(weights['US T-Bills'], errors='coerce').fillna(0)
+                usage[f'T-Bills (≤{current_constraints["max_tbill"]*100:.1f}%)'] = (tbill_weight / current_constraints['max_tbill']) * 100
+            else:
+                usage[f'T-Bills (≤{current_constraints["max_tbill"]*100:.1f}%)'] = 0.0
             
             # Duration usage (if constraint exists)
             if current_constraints['max_duration'] is not None:
-                avg_duration = (weights * df_metadata.loc[weights.index, 'Duration']).sum()
-                usage[f'Duration (≤{current_constraints["max_duration"]} yrs)'] = avg_duration / current_constraints['max_duration'] * 100
+                duration_values = pd.to_numeric(df_metadata.loc[weights.index, 'Duration'], errors='coerce').fillna(0)
+                avg_duration = (weights * duration_values).sum()
+                usage[f'Duration (≤{current_constraints["max_duration"]} yrs)'] = (avg_duration / current_constraints['max_duration']) * 100
             else:
                 usage['Duration (≤∞ yrs)'] = 0.0
             
             # Rating usage (showing how close to minimum rating)
-            avg_rating = (weights * df_metadata.loc[weights.index, 'Rating_Num']).sum()
+            rating_values = pd.to_numeric(df_metadata.loc[weights.index, 'Rating_Num'], errors='coerce').fillna(0)
+            avg_rating = (weights * rating_values).sum()
             min_rating = current_constraints['min_rating']
             rating_usage = ((avg_rating - min_rating) / (20 - min_rating)) * 100  # Scale from min_rating to AAA (20)
             usage[f'Rating (≥{inverse_rating_scale[min_rating]})'] = max(0, rating_usage)
