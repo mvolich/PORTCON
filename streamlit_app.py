@@ -73,27 +73,6 @@ st.markdown(f"""
     .stButton > button:hover {{
         background-color: {RUBRICS_COLORS['medium_blue']};
     }}
-    
-    /* Compact table styling to prevent horizontal scroll */
-    .stDataFrame {{
-        font-size: 0.9em;
-    }}
-    
-    .stDataFrame th {{
-        padding: 4px 6px !important;
-        font-size: 0.85em !important;
-    }}
-    
-    .stDataFrame td {{
-        padding: 4px 6px !important;
-        font-size: 0.85em !important;
-    }}
-    
-    /* Ensure table fits within container */
-    .stDataFrame > div {{
-        max-width: 100% !important;
-        overflow-x: auto !important;
-    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -482,7 +461,7 @@ if uploaded_file is not None:
         max_return = (mu @ w.value).item()
         return max_return
     
-    def generate_efficient_frontier(fund_name, df_returns, df_metadata, fund_constraints, rf_rate_hist, step_size=0.003):
+    def generate_efficient_frontier(fund_name, df_returns, df_metadata, fund_constraints, rf_rate_hist, step_size=0.0015):
         """Generate efficient frontier"""
         # Find minimum return portfolio
         try:
@@ -501,14 +480,6 @@ if uploaded_file is not None:
             max_return = min_return * 2
         
         targets = np.arange(min_return, max_return + step_size, step_size)
-        
-        # Limit the number of portfolios to prevent table from being too wide
-        max_portfolios = 50
-        if len(targets) > max_portfolios:
-            # Sample evenly across the range
-            step_indices = np.linspace(0, len(targets)-1, max_portfolios, dtype=int)
-            targets = targets[step_indices]
-        
         returns_list, risks_list, metrics_dict, weights_dict = [], [], {}, {}
         
         for i, target in enumerate(targets):
@@ -1043,12 +1014,7 @@ if uploaded_file is not None:
                 subset=[optimal_portfolio]
             )
         
-        # Display the table with compact formatting to avoid horizontal scroll
-        st.dataframe(
-            styler,
-            use_container_width=True,
-            height=400  # Set a fixed height to prevent vertical scrolling
-        )
+        st.dataframe(styler, use_container_width=True)
         
         # Constraints Budget Usage
         st.subheader("🔒 Constraints Budget Usage")
