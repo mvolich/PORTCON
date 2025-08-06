@@ -1085,6 +1085,66 @@ if uploaded_file is not None:
         
         st.plotly_chart(fig_frontier, use_container_width=True)
         
+        # Sharpe Ratio Line Plot
+        if 'Sharpe (Hist Avg)' in df_metrics.index:
+            # Extract Sharpe ratios for all portfolios
+            sharpe_values = []
+            portfolio_names = []
+            
+            for portfolio in df_metrics.columns:
+                try:
+                    sharpe_val = float(df_metrics.loc['Sharpe (Hist Avg)', portfolio])
+                    sharpe_values.append(sharpe_val)
+                    portfolio_names.append(portfolio)
+                except (ValueError, TypeError):
+                    sharpe_values.append(0.0)
+                    portfolio_names.append(portfolio)
+            
+            # Create Sharpe ratio line plot
+            fig_sharpe = go.Figure()
+            fig_sharpe.add_trace(go.Scatter(
+                x=portfolio_names,
+                y=sharpe_values,
+                mode='lines+markers',
+                name='Sharpe Ratio',
+                line=dict(color=RUBRICS_COLORS['blue'], width=3),
+                marker=dict(color=RUBRICS_COLORS['orange'], size=8),
+                hovertemplate='<b>%{x}</b><br>Sharpe Ratio: %{y:.4f}<extra></extra>'
+            ))
+            
+            # Highlight the optimal portfolio point
+            if optimal_portfolio and optimal_portfolio in portfolio_names:
+                optimal_idx = portfolio_names.index(optimal_portfolio)
+                optimal_sharpe = sharpe_values[optimal_idx]
+                
+                fig_sharpe.add_trace(go.Scatter(
+                    x=[optimal_portfolio],
+                    y=[optimal_sharpe],
+                    mode='markers',
+                    name='Optimal Portfolio',
+                    marker=dict(
+                        color='green',
+                        size=15,
+                        symbol='star',
+                        line=dict(color='white', width=2)
+                    ),
+                    hovertemplate=f'<b>Optimal Portfolio</b><br>Sharpe Ratio: {optimal_sharpe:.4f}<extra></extra>'
+                ))
+            
+            fig_sharpe.update_layout(
+                title="Sharpe Ratio Across Portfolios",
+                xaxis_title="Portfolio",
+                yaxis_title="Sharpe Ratio",
+                template="plotly_white",
+                height=400,
+                font=dict(family="Ringside", size=12),
+                title_font=dict(family="Ringside", size=16),
+                legend_font=dict(family="Ringside", size=11),
+                showlegend=True
+            )
+            
+            st.plotly_chart(fig_sharpe, use_container_width=True)
+        
         # Portfolio weights visualization
         st.subheader("Portfolio Composition Across Frontier")
         
