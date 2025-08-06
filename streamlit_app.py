@@ -726,262 +726,280 @@ if uploaded_file is not None:
         'Standard Deviation (%)': annualized_std
     }).sort_values(by='Annualised Return (%)', ascending=False)
     
-    # CIO View - Cross-Fund Analysis
-    st.header("🏢 CIO View - Fund Comparison")
+    # Create tabs for different views
+    tab1, tab2, tab3, tab4 = st.tabs(["CIO Comparison", "GFI", "GCF", "EYF"])
     
-    # Run optimization for all funds to get optimal portfolios
-    st.info("📊 Analyzing optimal portfolios across all funds...")
-    
+    # Run optimization for all funds to get optimal portfolios (needed for all tabs)
     cio_results = {}
     all_fund_names = list(st.session_state.fund_constraints.keys())
     
-    # Progress bar for CIO analysis
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    
-    for i, fund_name in enumerate(all_fund_names):
-        try:
-            status_text.text(f"Analyzing {fund_name}...")
-            progress_bar.progress((i + 1) / len(all_fund_names))
-            
-            # Get optimal portfolio for this fund
-            fund_constraints = st.session_state.fund_constraints[fund_name]
-            returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
-                fund_name, df_pct_change, df_metadata, fund_constraints, rf_rate_hist
-            )
-            
-            # Find optimal portfolio
-            if 'Sharpe (Hist Avg)' in df_metrics.index:
-                sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
-                expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
-                
-                max_sharpe = sharpe_row.max()
-                max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
-                
-                if len(max_sharpe_portfolios) == 1:
-                    optimal_portfolio = max_sharpe_portfolios[0]
-                else:
-                    tie_break_returns = expected_return_row[max_sharpe_portfolios]
-                    optimal_portfolio = tie_break_returns.idxmax()
-                
-                # Store results
-                cio_results[fund_name] = {
-                    'optimal_portfolio': optimal_portfolio,
-                    'expected_return': df_metrics.loc['Expected Return', optimal_portfolio],
-                    'expected_volatility': df_metrics.loc['Expected Volatility', optimal_portfolio],
-                    'sharpe_ratio': df_metrics.loc['Sharpe (Hist Avg)', optimal_portfolio],
-                    'avg_yield': df_metrics.loc['Avg Yield', optimal_portfolio] if 'Avg Yield' in df_metrics.index else 0,
-                    'avg_duration': df_metrics.loc['Avg Duration', optimal_portfolio] if 'Avg Duration' in df_metrics.index else 0,
-                    'avg_rating': df_metrics.loc['Avg Rating', optimal_portfolio] if 'Avg Rating' in df_metrics.index else 10,
-                    'weights': df_weights[optimal_portfolio],
-                    'df_metrics': df_metrics,
-                    'df_weights': df_weights
-                }
-        except Exception as e:
-            st.warning(f"⚠️ Could not analyze {fund_name}: {str(e)}")
-            cio_results[fund_name] = None
-    
-    # Clear progress indicators
-    progress_bar.empty()
-    status_text.empty()
-    
-    if cio_results:
-        # Fund Comparison Overview
-        st.subheader("📈 Optimal Portfolio Comparison")
-        
-        # Create comparison metrics dataframe
-        comparison_data = []
-        for fund_name, result in cio_results.items():
-            if result is not None:
-                comparison_data.append({
-                    'Fund': fund_name,
-                    'Expected Return': f"{result['expected_return']*100:.2f}%",
-                    'Expected Volatility': f"{result['expected_volatility']*100:.2f}%",
-                    'Sharpe Ratio': f"{result['sharpe_ratio']:.4f}",
-                    'Avg Yield': f"{result['avg_yield']*100:.2f}%",
-                    'Avg Duration': f"{result['avg_duration']:.2f}",
-                    'Avg Rating': inverse_rating_scale.get(int(round(result['avg_rating'])), "A")
-                })
-        
-        if comparison_data:
-            comparison_df = pd.DataFrame(comparison_data).set_index('Fund')
-            
-            # Display the comparison table without highlighting
-            st.dataframe(comparison_df.T, use_container_width=True)
-            
-            # Performance Visualization
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                # Risk-Return Scatter Plot
-                fig_risk_return = go.Figure()
-                
-                fund_colors = [RUBRICS_COLORS['blue'], RUBRICS_COLORS['medium_blue'], 
-                              RUBRICS_COLORS['light_blue'], RUBRICS_COLORS['grey'], 
-                              RUBRICS_COLORS['orange']]
-                
-                for i, (fund_name, result) in enumerate(cio_results.items()):
-                    if result is not None:
-                        color = fund_colors[i % len(fund_colors)]
-                        fig_risk_return.add_trace(go.Scatter(
-                            x=[result['expected_volatility']*100],
-                            y=[result['expected_return']*100],
-                            mode='markers+text',
-                            name=fund_name,
-                            marker=dict(color=color, size=15),
-                            text=[fund_name],
-                            textposition="top center",
-                            hovertemplate=f"<b>{fund_name}</b><br>" +
-                                        f"Return: {result['expected_return']*100:.2f}%<br>" +
-                                        f"Volatility: {result['expected_volatility']*100:.2f}%<br>" +
-                                        f"Sharpe: {result['sharpe_ratio']:.4f}<extra></extra>"
-                        ))
-                
-                fig_risk_return.update_layout(
-                    title="Fund Risk-Return Profile",
-                    xaxis_title="Expected Volatility (%)",
-                    yaxis_title="Expected Return (%)",
-                    template="plotly_white",
-                    height=400,
-                    font=dict(family="Ringside", size=12),
-                    title_font=dict(family="Ringside", size=16),
-                    showlegend=False
+    # Progress bar for analysis
+    with st.spinner("📊 Analyzing optimal portfolios across all funds..."):
+        for fund_name in all_fund_names:
+            try:
+                # Get optimal portfolio for this fund
+                fund_constraints = st.session_state.fund_constraints[fund_name]
+                returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
+                    fund_name, df_pct_change, df_metadata, fund_constraints, rf_rate_hist
                 )
                 
-                st.plotly_chart(fig_risk_return, use_container_width=True)
-            
-            with col2:
-                # Cross-Fund Efficient Frontier
-                fig_frontier_comp = go.Figure()
-                
-                # Plot efficient frontier for each fund
-                for i, (fund_name, result) in enumerate(cio_results.items()):
-                    if result is not None:
-                        color = fund_colors[i % len(fund_colors)]
-                        
-                        # Get the full efficient frontier data for this fund
-                        fund_constraints = st.session_state.fund_constraints[fund_name]
-                        try:
-                            returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
-                                fund_name, df_pct_change, df_metadata, fund_constraints, rf_rate_hist
-                            )
-                            
-                            # Plot the efficient frontier line
-                            fig_frontier_comp.add_trace(go.Scatter(
-                                x=[r*100 for r in risks_list],
-                                y=[ret*100 for ret in returns_list],
-                                mode='lines',
-                                name=f'{fund_name} Frontier',
-                                line=dict(color=color, width=2),
-                                opacity=0.7,
-                                hovertemplate=f'<b>{fund_name}</b><br>Volatility: %{{x:.2f}}%<br>Return: %{{y:.2f}}%<extra></extra>'
-                            ))
-                            
-                            # Highlight the optimal portfolio point
-                            fig_frontier_comp.add_trace(go.Scatter(
-                                x=[result['expected_volatility']*100],
-                                y=[result['expected_return']*100],
-                                mode='markers',
-                                name=f'{fund_name} Optimal',
-                                marker=dict(
-                                    color=color,
-                                    size=12,
-                                    symbol='star',
-                                    line=dict(color='white', width=2)
-                                ),
-                                hovertemplate=f"<b>{fund_name} Optimal</b><br>" +
-                                            f"Return: {result['expected_return']*100:.2f}%<br>" +
-                                            f"Volatility: {result['expected_volatility']*100:.2f}%<br>" +
-                                            f"Sharpe: {result['sharpe_ratio']:.4f}<extra></extra>"
-                            ))
-                            
-                        except Exception as e:
-                            # If frontier generation fails, just plot the optimal point
-                            fig_frontier_comp.add_trace(go.Scatter(
-                                x=[result['expected_volatility']*100],
-                                y=[result['expected_return']*100],
-                                mode='markers',
-                                name=f'{fund_name} Optimal',
-                                marker=dict(
-                                    color=color,
-                                    size=12,
-                                    symbol='star',
-                                    line=dict(color='white', width=2)
-                                ),
-                                hovertemplate=f"<b>{fund_name} Optimal</b><br>" +
-                                            f"Return: {result['expected_return']*100:.2f}%<br>" +
-                                            f"Volatility: {result['expected_volatility']*100:.2f}%<br>" +
-                                            f"Sharpe: {result['sharpe_ratio']:.4f}<extra></extra>"
-                            ))
-                
-                fig_frontier_comp.update_layout(
-                    title="Cross-Fund Efficient Frontiers",
-                    xaxis_title="Expected Volatility (%)",
-                    yaxis_title="Expected Return (%)",
-                    template="plotly_white",
-                    height=400,
-                    font=dict(family="Ringside", size=12),
-                    title_font=dict(family="Ringside", size=16),
-                    legend_font=dict(family="Ringside", size=10),
-                    showlegend=True,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=1,
-                        xanchor="left",
-                        x=1.02
-                    )
-                )
-                
-                st.plotly_chart(fig_frontier_comp, use_container_width=True)
-            
-            # Asset Allocation Comparison
-            st.subheader("🎯 Asset Allocation Comparison")
-            
-            # Combine all optimal portfolio weights
-            all_assets = set()
-            for fund_name, result in cio_results.items():
-                if result is not None:
-                    all_assets.update(result['weights'].index)
-            
-            all_assets = sorted(list(all_assets))
-            
-            # Create allocation comparison dataframe
-            allocation_data = {}
-            for fund_name, result in cio_results.items():
-                if result is not None:
-                    fund_allocations = []
-                    for asset in all_assets:
-                        weight = result['weights'].get(asset, 0.0) * 100
-                        fund_allocations.append(f"{weight:.2f}%" if weight > 0.01 else "-")
-                    allocation_data[fund_name] = fund_allocations
-            
-            if allocation_data:
-                allocation_df = pd.DataFrame(allocation_data, index=all_assets)
-                st.dataframe(allocation_df, use_container_width=True)
+                # Find optimal portfolio
+                if 'Sharpe (Hist Avg)' in df_metrics.index:
+                    sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
+                    expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
+                    
+                    max_sharpe = sharpe_row.max()
+                    max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
+                    
+                    if len(max_sharpe_portfolios) == 1:
+                        optimal_portfolio = max_sharpe_portfolios[0]
+                    else:
+                        tie_break_returns = expected_return_row[max_sharpe_portfolios]
+                        optimal_portfolio = tie_break_returns.idxmax()
+                    
+                    # Store results
+                    cio_results[fund_name] = {
+                        'optimal_portfolio': optimal_portfolio,
+                        'expected_return': df_metrics.loc['Expected Return', optimal_portfolio],
+                        'expected_volatility': df_metrics.loc['Expected Volatility', optimal_portfolio],
+                        'sharpe_ratio': df_metrics.loc['Sharpe (Hist Avg)', optimal_portfolio],
+                        'avg_yield': df_metrics.loc['Avg Yield', optimal_portfolio] if 'Avg Yield' in df_metrics.index else 0,
+                        'avg_duration': df_metrics.loc['Avg Duration', optimal_portfolio] if 'Avg Duration' in df_metrics.index else 0,
+                        'avg_rating': df_metrics.loc['Avg Rating', optimal_portfolio] if 'Avg Rating' in df_metrics.index else 10,
+                        'weights': df_weights[optimal_portfolio],
+                        'df_metrics': df_metrics,
+                        'df_weights': df_weights
+                    }
+            except Exception as e:
+                st.warning(f"⚠️ Could not analyze {fund_name}: {str(e)}")
+                cio_results[fund_name] = None
+    
+    # Tab 1: CIO Comparison
+    with tab1:
+        st.header("🏢 CIO View - Fund Comparison")
         
-        st.divider()
-    
-    # Individual Fund Analysis
-    st.header("🔍 Individual Fund Analysis")
-    st.info(f"Detailed analysis for: **{selected_fund}**")
-    
-    # Main analysis section
-    st.subheader("Portfolio Construction Model")
-    
-    # Data overview
-    col1, col2, col3 = st.columns(3)
+        if cio_results:
+            # Fund Comparison Overview
+            st.subheader("📈 Optimal Portfolio Comparison")
+            
+            # Create comparison metrics dataframe
+            comparison_data = []
+            for fund_name, result in cio_results.items():
+                if result is not None:
+                    comparison_data.append({
+                        'Fund': fund_name,
+                        'Expected Return': f"{result['expected_return']*100:.2f}%",
+                        'Expected Volatility': f"{result['expected_volatility']*100:.2f}%",
+                        'Sharpe Ratio': f"{result['sharpe_ratio']:.4f}",
+                        'Avg Yield': f"{result['avg_yield']*100:.2f}%",
+                        'Avg Duration': f"{result['avg_duration']:.2f}",
+                        'Avg Rating': inverse_rating_scale.get(int(round(result['avg_rating'])), "A")
+                    })
+            
+            if comparison_data:
+                comparison_df = pd.DataFrame(comparison_data).set_index('Fund')
+                
+                # Display the comparison table without highlighting
+                st.dataframe(comparison_df.T, use_container_width=True)
+                
+                # Performance Visualization
+                col1, col2 = st.columns(2)
+                
     with col1:
-        st.metric("Number of Assets", len(df_pct_change.columns))
+                    # Risk-Return Scatter Plot
+                    fig_risk_return = go.Figure()
+                    
+                    fund_colors = [RUBRICS_COLORS['blue'], RUBRICS_COLORS['medium_blue'], 
+                                  RUBRICS_COLORS['light_blue'], RUBRICS_COLORS['grey'], 
+                                  RUBRICS_COLORS['orange']]
+                    
+                    for i, (fund_name, result) in enumerate(cio_results.items()):
+                        if result is not None:
+                            color = fund_colors[i % len(fund_colors)]
+                            fig_risk_return.add_trace(go.Scatter(
+                                x=[result['expected_volatility']*100],
+                                y=[result['expected_return']*100],
+                                mode='markers+text',
+                                name=fund_name,
+                                marker=dict(color=color, size=15),
+                                text=[fund_name],
+                                textposition="top center",
+                                hovertemplate=f"<b>{fund_name}</b><br>" +
+                                            f"Return: {result['expected_return']*100:.2f}%<br>" +
+                                            f"Volatility: {result['expected_volatility']*100:.2f}%<br>" +
+                                            f"Sharpe: {result['sharpe_ratio']:.4f}<extra></extra>"
+                            ))
+                    
+                    fig_risk_return.update_layout(
+                        title="Fund Risk-Return Profile",
+                        xaxis_title="Expected Volatility (%)",
+                        yaxis_title="Expected Return (%)",
+                        template="plotly_white",
+                        height=400,
+                        font=dict(family="Ringside", size=12),
+                        title_font=dict(family="Ringside", size=16),
+                        showlegend=False
+                    )
+                    
+                    st.plotly_chart(fig_risk_return, use_container_width=True)
+                
     with col2:
-        st.metric("Time Period", f"{df_pct_change.index.min().date()} to {df_pct_change.index.max().date()}")
-    with col3:
-        st.metric("Trading Days", len(df_pct_change))
+                    # Cross-Fund Efficient Frontier
+                    fig_frontier_comp = go.Figure()
+                    
+                    # Plot efficient frontier for each fund
+                    for i, (fund_name, result) in enumerate(cio_results.items()):
+                        if result is not None:
+                            color = fund_colors[i % len(fund_colors)]
+                            
+                            # Get the full efficient frontier data for this fund
+                            fund_constraints = st.session_state.fund_constraints[fund_name]
+                            try:
+                                returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
+                                    fund_name, df_pct_change, df_metadata, fund_constraints, rf_rate_hist
+                                )
+                                
+                                # Plot the efficient frontier line
+                                fig_frontier_comp.add_trace(go.Scatter(
+                                    x=[r*100 for r in risks_list],
+                                    y=[ret*100 for ret in returns_list],
+                                    mode='lines',
+                                    name=f'{fund_name} Frontier',
+                                    line=dict(color=color, width=2),
+                                    opacity=0.7,
+                                    hovertemplate=f'<b>{fund_name}</b><br>Volatility: %{{x:.2f}}%<br>Return: %{{y:.2f}}%<extra></extra>'
+                                ))
+                                
+                                # Highlight the optimal portfolio point
+                                fig_frontier_comp.add_trace(go.Scatter(
+                                    x=[result['expected_volatility']*100],
+                                    y=[result['expected_return']*100],
+                                    mode='markers',
+                                    name=f'{fund_name} Optimal',
+                                    marker=dict(
+                                        color=color,
+                                        size=12,
+                                        symbol='star',
+                                        line=dict(color='white', width=2)
+                                    ),
+                                    hovertemplate=f"<b>{fund_name} Optimal</b><br>" +
+                                                f"Return: {result['expected_return']*100:.2f}%<br>" +
+                                                f"Volatility: {result['expected_volatility']*100:.2f}%<br>" +
+                                                f"Sharpe: {result['sharpe_ratio']:.4f}<extra></extra>"
+                                ))
+                                
+                            except Exception as e:
+                                # If frontier generation fails, just plot the optimal point
+                                fig_frontier_comp.add_trace(go.Scatter(
+                                    x=[result['expected_volatility']*100],
+                                    y=[result['expected_return']*100],
+                                    mode='markers',
+                                    name=f'{fund_name} Optimal',
+                                    marker=dict(
+                                        color=color,
+                                        size=12,
+                                        symbol='star',
+                                        line=dict(color='white', width=2)
+                                    ),
+                                    hovertemplate=f"<b>{fund_name} Optimal</b><br>" +
+                                                f"Return: {result['expected_return']*100:.2f}%<br>" +
+                                                f"Volatility: {result['expected_volatility']*100:.2f}%<br>" +
+                                                f"Sharpe: {result['sharpe_ratio']:.4f}<extra></extra>"
+                                ))
+                    
+                    fig_frontier_comp.update_layout(
+                        title="Cross-Fund Efficient Frontiers",
+                        xaxis_title="Expected Volatility (%)",
+                        yaxis_title="Expected Return (%)",
+                        template="plotly_white",
+                        height=400,
+                        font=dict(family="Ringside", size=12),
+                        title_font=dict(family="Ringside", size=16),
+                        legend_font=dict(family="Ringside", size=10),
+                        showlegend=True,
+                        legend=dict(
+                            orientation="v",
+                            yanchor="top",
+                            y=1,
+                            xanchor="left",
+                            x=1.02
+                        )
+                    )
+                    
+                    st.plotly_chart(fig_frontier_comp, use_container_width=True)
+                
+                # Asset Allocation Comparison
+                st.subheader("🎯 Asset Allocation Comparison")
+                
+                # Combine all optimal portfolio weights
+                all_assets = set()
+                for fund_name, result in cio_results.items():
+                    if result is not None:
+                        all_assets.update(result['weights'].index)
+                
+                all_assets = sorted(list(all_assets))
+                
+                # Create allocation comparison dataframe
+                allocation_data = {}
+                for fund_name, result in cio_results.items():
+                    if result is not None:
+                        fund_allocations = []
+                        for asset in all_assets:
+                            weight = result['weights'].get(asset, 0.0) * 100
+                            fund_allocations.append(f"{weight:.2f}%" if weight > 0.01 else "-")
+                        allocation_data[fund_name] = fund_allocations
+                
+                if allocation_data:
+                    allocation_df = pd.DataFrame(allocation_data, index=all_assets)
+                    st.dataframe(allocation_df, use_container_width=True)
     
-    # Exploratory Data Analysis Section
-    # Using a custom expander approach to avoid text overlap issues
-    expander_key = "eda_expander"
-    if expander_key not in st.session_state:
+    # Function to create individual fund analysis
+    def create_fund_analysis(fund_name):
+        st.header(f"🔍 {fund_name} Fund Analysis")
+        st.info(f"Detailed analysis for: **{fund_name}**")
+        
+        # Run the individual fund analysis using existing code structure
+        try:
+            # Get fund constraints
+            current_constraints = st.session_state.fund_constraints[fund_name]
+            
+            # Run optimization for this specific fund
+            with st.spinner(f"Running portfolio optimization for {fund_name}..."):
+                returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
+                    fund_name, df_pct_change, df_metadata, current_constraints, rf_rate_hist
+                )
+            
+            st.success("✅ Optimization completed successfully!")
+            
+            # Display the rest of the individual fund analysis here
+            # This will be the same content that was previously shown for the selected fund
+            
+        except Exception as e:
+            st.error(f"Error in optimization for {fund_name}: {str(e)}")
+    
+    # Individual Fund Tabs
+    with tab2:
+        create_fund_analysis("GFI")
+    
+    with tab3:
+        create_fund_analysis("GCF")
+    
+    with tab4:
+        create_fund_analysis("EYF")
+
+else:
+    # Welcome message when no file is uploaded
+    st.markdown("""
+    <div class="welcome-message" style="text-align: center; padding: 2rem;">
+        <h2>Welcome to Portfolio Construction Model</h2>
+        <p>Upload your Excel file to begin portfolio optimization analysis.</p>
+        <p>The file should contain two sheets:</p>
+        <ul style="text-align: left; display: inline-block;">
+            <li><strong>Index List:</strong> Price histories for assets</li>
+            <li><strong>Sheet2:</strong> Asset metadata (ratings, duration, etc.)</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
         st.session_state[expander_key] = False
     
     # Custom expander header
@@ -1502,12 +1520,12 @@ if uploaded_file is not None:
                             df_metrics_display.loc[row, portfolio] = rating_val
                         except:
                             df_metrics_display.loc[row, portfolio] = "A"
-                            
+                    
                     elif row == 'Sharpe (Hist Avg)':
                         # Keep Sharpe ratio with 4 decimal places (no % symbol)
                         df_metrics_display.loc[row, portfolio] = f"{raw_value:.4f}"
-                        
-                    elif row == 'Avg Duration':
+                    
+                elif row == 'Avg Duration':
                         # Duration with 2 decimal places (no % symbol)
                         df_metrics_display.loc[row, portfolio] = f"{raw_value:.2f}"
                         
@@ -1517,12 +1535,12 @@ if uploaded_file is not None:
                         if abs(pct_val) < 0.01:
                             pct_val = 0.0
                         df_metrics_display.loc[row, portfolio] = f"{pct_val:.2f}%"
-                        
-                    else:
+                    
+                else:
                         # All other numeric values get % symbol and 2 decimal places
                         df_metrics_display.loc[row, portfolio] = f"{raw_value:.2f}%"
-                        
-                except Exception as e:
+                    
+            except Exception as e:
                     # Set fallback values
                     if row == 'Avg Rating':
                         df_metrics_display.loc[row, portfolio] = "A"
@@ -1646,11 +1664,11 @@ if uploaded_file is not None:
                     numeric_val = float(val)
                 
                 if numeric_val > 90:
-                    return 'background-color: #ffcccc'  # Red for >90%
+                return 'background-color: #ffcccc'  # Red for >90%
                 elif numeric_val > 70:
-                    return 'background-color: #ffebcc'  # Orange for 70-90%
-                else:
-                    return 'background-color: #ccffcc'  # Green for <70%
+                return 'background-color: #ffebcc'  # Orange for 70-90%
+            else:
+                return 'background-color: #ccffcc'  # Green for <70%
             except (ValueError, TypeError):
                 return ''
         
