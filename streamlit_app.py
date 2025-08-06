@@ -752,12 +752,12 @@ if uploaded_file is not None:
             try:
                 # Get optimal portfolio for this fund
                 fund_constraints = st.session_state.fund_constraints[fund_name]
-                returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
+            returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
                     fund_name, df_pct_change, df_metadata, fund_constraints, rf_rate_hist
-                )
-                
+            )
+        
                 # Find optimal portfolio
-                if 'Sharpe (Hist Avg)' in df_metrics.index:
+                        if 'Sharpe (Hist Avg)' in df_metrics.index:
                     sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
                     expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
                     
