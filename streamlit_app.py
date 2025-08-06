@@ -16,7 +16,7 @@ import hashlib
 # Page configuration
 st.set_page_config(
     page_title="Rubrics MVO Portfolio Optimizer",
-    page_icon="📊",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -33,6 +33,12 @@ RUBRICS_COLORS = {
 # Custom CSS for Rubrics branding
 st.markdown(f"""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Ringside:wght@300;400;500;600;700&display=swap');
+    
+    * {{
+        font-family: 'Ringside', sans-serif;
+    }}
+    
     .main-header {{
         background: linear-gradient(90deg, {RUBRICS_COLORS['blue']}, {RUBRICS_COLORS['medium_blue']});
         padding: 1rem;
@@ -526,7 +532,7 @@ if uploaded_file is not None:
     }).sort_values(by='Annualised Return (%)', ascending=False)
     
     # Main analysis section
-    st.header("📊 Portfolio Analysis")
+    st.header("Portfolio Analysis")
     
     # Data overview
     col1, col2, col3 = st.columns(3)
@@ -538,8 +544,8 @@ if uploaded_file is not None:
         st.metric("Trading Days", len(df_pct_change))
     
     # Exploratory Data Analysis Section
-    with st.expander("🔍 Exploratory Data Analysis", expanded=False):
-        st.subheader("📊 Data Processing Workflow")
+    with st.expander("Exploratory Data Analysis", expanded=False):
+        st.subheader("Data Processing Workflow")
         
         # Show raw data structure
         col1, col2 = st.columns(2)
@@ -580,7 +586,7 @@ if uploaded_file is not None:
         coverage_df = pd.DataFrame.from_dict(first_last_dates, orient='index')
         st.dataframe(coverage_df, use_container_width=True)
         
-        st.subheader("📈 Time Series Analysis")
+        st.subheader("Time Series Analysis")
         
         # Percentage change over time
         fig_pct = go.Figure()
@@ -628,7 +634,7 @@ if uploaded_file is not None:
         )
         st.plotly_chart(fig_rebased, use_container_width=True)
         
-        st.subheader("📊 Asset Performance Summary")
+        st.subheader("Asset Performance Summary")
         
         # Enhanced performance summary with additional metrics
         performance_summary = pd.DataFrame({
@@ -642,7 +648,7 @@ if uploaded_file is not None:
         st.dataframe(performance_summary, use_container_width=True)
         
         # Distribution analysis
-        st.subheader("📊 Return Distributions")
+        st.subheader("Return Distributions")
         
         # Create interactive histogram with dropdown
         fig_dist = go.Figure()
@@ -726,7 +732,7 @@ if uploaded_file is not None:
         st.plotly_chart(fig_corr, use_container_width=True)
         
         # Additional insights
-        st.subheader("💡 Key Insights")
+        st.subheader("Key Insights")
         
         # Find highest and lowest correlations
         corr_matrix_no_diag = correlation_matrix.where(~np.eye(correlation_matrix.shape[0], dtype=bool))
@@ -753,7 +759,7 @@ if uploaded_file is not None:
             st.write(f"{i}. **{asset}**: Return: {row['Annualised Return (%)']:.2f}%, Vol: {row['Annualised Volatility (%)']:.2f}%, Sharpe: {row['Sharpe Ratio']:.3f}")
     
     # Run optimization for selected fund
-    st.header(f"🎯 {selected_fund} Portfolio Optimization")
+    st.header(f"{selected_fund} Portfolio Optimization")
     
     # Display current constraints being used for optimization
     st.info(f"**Current constraints for {selected_fund}:** AT1: {st.session_state.fund_constraints[selected_fund]['max_at1']*100:.1f}%, "
@@ -854,7 +860,7 @@ if uploaded_file is not None:
         st.plotly_chart(fig_frontier, use_container_width=True)
         
         # Weights Table
-        st.subheader("📊 Portfolio Weights Table")
+        st.subheader("Portfolio Weights Table")
         
         # Create a weights table showing all portfolios
         df_weights_display = df_weights.copy()
@@ -1046,7 +1052,7 @@ if uploaded_file is not None:
         st.dataframe(styler, use_container_width=True)
         
         # Constraints Budget Usage
-        st.subheader("🔒 Constraints Budget Usage")
+        st.subheader("Constraints Budget Usage")
         
         # Get current constraints from session state
         current_constraints = st.session_state.fund_constraints[selected_fund]
