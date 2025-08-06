@@ -1388,7 +1388,6 @@ if uploaded_file is not None:
         st.dataframe(styled, use_container_width=True)
         
         # Visual representation of constraint usage
-        st.subheader("Constraint Usage Visualization")
         
         # Create a bar chart showing constraint usage for the optimal portfolio
         if 'Sharpe (Hist Avg)' in df_metrics.index:
@@ -1487,26 +1486,6 @@ if uploaded_file is not None:
         with col4:
             st.metric("Sharpe Ratio", f"{optimal_sharpe:.2f}")
         
-        # Optimal portfolio weights
-        st.subheader("Optimal Portfolio Weights")
-        optimal_weights = df_weights[optimal_portfolio].sort_values(ascending=False)
-        optimal_weights = optimal_weights[optimal_weights > 0.001]
-        
-        fig_optimal = px.bar(
-            x=optimal_weights.index,
-            y=optimal_weights.values * 100,
-            title=f"{selected_fund} Optimal Portfolio Weights",
-            labels={'x': 'Asset', 'y': 'Weight (%)'},
-            color_discrete_sequence=[RUBRICS_COLORS['blue']]
-        )
-        fig_optimal.update_layout(
-            height=400,
-            font=dict(family="Ringside", size=12),
-            title_font=dict(family="Ringside", size=16),
-            legend_font=dict(family="Ringside", size=11)
-        )
-        st.plotly_chart(fig_optimal, use_container_width=True)
-        
     except Exception as e:
         st.error(f"Error in optimization: {str(e)}")
         st.write(f"Error type: {type(e)}")
@@ -1517,7 +1496,7 @@ else:
     # Welcome message when no file is uploaded
     st.markdown("""
     <div class="welcome-message" style="text-align: center; padding: 2rem;">
-        <h2>Welcome to Rubrics MVO Portfolio Optimizer</h2>
+        <h2>Welcome to Portfolio Construction Model</h2>
         <p>Upload your Excel file to begin portfolio optimization analysis.</p>
         <p>The file should contain two sheets:</p>
         <ul style="text-align: left; display: inline-block;">
