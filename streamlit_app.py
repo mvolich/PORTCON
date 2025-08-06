@@ -835,7 +835,7 @@ if uploaded_file is not None:
                 mode='markers',
                 name='Optimal Portfolio',
                 marker=dict(
-                    color='yellow',
+                    color='green',
                     size=15,
                     symbol='star',
                     line=dict(color='white', width=2)
@@ -862,13 +862,21 @@ if uploaded_file is not None:
         
         fig_weights = go.Figure()
         
-        for asset in df_pct.index:
+        # Use Rubrics color palette for assets
+        rubrics_colors = [RUBRICS_COLORS['blue'], RUBRICS_COLORS['medium_blue'], 
+                         RUBRICS_COLORS['light_blue'], RUBRICS_COLORS['grey'], 
+                         RUBRICS_COLORS['orange']]
+        
+        for i, asset in enumerate(df_pct.index):
+            color = rubrics_colors[i % len(rubrics_colors)]
             fig_weights.add_trace(go.Scatter(
                 x=df_pct.columns,
                 y=df_pct.loc[asset],
                 mode='lines+markers',
                 stackgroup='one',
                 name=asset,
+                line=dict(color=color),
+                marker=dict(color=color),
                 hovertemplate="<b>Asset:</b> %{fullData.name}<br><b>Portfolio:</b> %{x}<br><b>Weight:</b> %{y:.2f}%"
             ))
         
@@ -967,7 +975,43 @@ if uploaded_file is not None:
                 # Set to zeros as fallback
                 df_metrics_display.loc[row] = [0.0] * len(df_metrics.columns)
         
-        st.dataframe(df_metrics_display, use_container_width=True)
+        # Apply green gridlines around optimal portfolio column
+        def color_optimal_portfolio_column(df):
+            # Create a copy of the dataframe for styling
+            styled_df = df.copy()
+            
+            # Find the optimal portfolio column
+            if 'Sharpe (Hist Avg)' in df.index:
+                sharpe_row = pd.to_numeric(df.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
+                expected_return_row = pd.to_numeric(df.loc['Expected Return'], errors='coerce').fillna(0)
+                
+                # Find the maximum Sharpe ratio
+                max_sharpe = sharpe_row.max()
+                
+                # Find all portfolios with the maximum Sharpe ratio
+                max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
+                
+                if len(max_sharpe_portfolios) == 1:
+                    optimal_portfolio = max_sharpe_portfolios[0]
+                else:
+                    # Multiple portfolios have the same maximum Sharpe ratio
+                    # Select the one with the highest expected return
+                    tie_break_returns = expected_return_row[max_sharpe_portfolios]
+                    optimal_portfolio = tie_break_returns.idxmax()
+                
+                # Apply green border to the optimal portfolio column
+                for col in df.columns:
+                    if col == optimal_portfolio:
+                        styled_df[col] = styled_df[col].apply(lambda x: f'border-left: 3px solid green; border-right: 3px solid green; {x}')
+                    else:
+                        styled_df[col] = styled_df[col].apply(lambda x: f'{x}')
+            
+            return styled_df
+        
+        # Apply the styling
+        df_metrics_styled = color_optimal_portfolio_column(df_metrics_display)
+        
+        st.dataframe(df_metrics_styled, use_container_width=True)
         
         # Constraints Budget Usage
         st.subheader("🔒 Constraints Budget Usage")
@@ -1028,6 +1072,10 @@ if uploaded_file is not None:
         # Create DataFrame for constraint usage
         df_constraint_usage = pd.DataFrame(constraint_usage).round(2)
         
+        # Ensure all values are properly formatted to 2 decimal places
+        for col in df_constraint_usage.columns:
+            df_constraint_usage[col] = df_constraint_usage[col].apply(lambda x: round(float(x), 2) if pd.notna(x) else x)
+        
         # Apply color coding to the dataframe
         def color_constraint_usage(val):
             if pd.isna(val):
@@ -1039,8 +1087,44 @@ if uploaded_file is not None:
             else:
                 return 'background-color: #ccffcc'  # Green for <70%
         
-        # Display constraint usage table with color coding
-        st.dataframe(df_constraint_usage.style.applymap(color_constraint_usage), use_container_width=True)
+        # Apply green gridlines around optimal portfolio column
+        def color_optimal_portfolio_column_constraints(df):
+            # Create a copy of the dataframe for styling
+            styled_df = df.copy()
+            
+            # Find the optimal portfolio column
+            if 'Sharpe (Hist Avg)' in df_metrics.index:
+                sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
+                expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
+                
+                # Find the maximum Sharpe ratio
+                max_sharpe = sharpe_row.max()
+                
+                # Find all portfolios with the maximum Sharpe ratio
+                max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
+                
+                if len(max_sharpe_portfolios) == 1:
+                    optimal_portfolio = max_sharpe_portfolios[0]
+                else:
+                    # Multiple portfolios have the same maximum Sharpe ratio
+                    # Select the one with the highest expected return
+                    tie_break_returns = expected_return_row[max_sharpe_portfolios]
+                    optimal_portfolio = tie_break_returns.idxmax()
+                
+                # Apply green border to the optimal portfolio column
+                for col in df.columns:
+                    if col == optimal_portfolio:
+                        styled_df[col] = styled_df[col].apply(lambda x: f'border-left: 3px solid green; border-right: 3px solid green; {x}')
+                    else:
+                        styled_df[col] = styled_df[col].apply(lambda x: f'{x}')
+            
+            return styled_df
+        
+        # Apply both color coding and optimal portfolio column highlighting
+        df_constraint_usage_styled = color_optimal_portfolio_column_constraints(df_constraint_usage)
+        
+        # Display constraint usage table with color coding and green gridlines
+        st.dataframe(df_constraint_usage_styled.style.applymap(color_constraint_usage), use_container_width=True)
         
         # Visual representation of constraint usage
         st.subheader("Constraint Usage Visualization")
@@ -1083,7 +1167,7 @@ if uploaded_file is not None:
                     x=constraints_list,
                     y=usage_values,
                     marker_color=colors,
-                    text=[f'{val:.1f}%' for val in usage_values],
+                    text=[f'{val:.2f}%' for val in usage_values],
                     textposition='auto'
                 ))
                 
