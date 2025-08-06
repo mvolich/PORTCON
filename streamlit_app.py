@@ -4,6 +4,14 @@ import numpy as np
 import cvxpy as cp
 import plotly.graph_objects as go
 import plotly.express as px
+
+# Set global font for all Plotly charts
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+
+# Configure global font for Plotly
+pio.templates["plotly_white"].layout.font = dict(family="Ringside", size=12)
+pio.templates["plotly_white"].layout.title.font = dict(family="Ringside", size=16)
 from sklearn.covariance import LedoitWolf
 import io
 import base64
@@ -35,7 +43,87 @@ st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Ringside:wght@300;400;500;600;700&display=swap');
     
-    html, body, [class*="css"], div, span, table, th, td, button, input, label, textarea {{
+    /* Universal font application for all elements */
+    html, body, [class*="css"], div, span, table, th, td, button, input, label, textarea, 
+    h1, h2, h3, h4, h5, h6, p, li, ul, ol, a, strong, em, b, i, 
+    .stMarkdown, .stText, .stHeader, .stSubheader, .stTitle, .stCaption,
+    .stSelectbox, .stMultiselect, .stSlider, .stNumberInput, .stTextInput, 
+    .stCheckbox, .stRadio, .stButton, .stFileUploader, .stDataFrame,
+    .stPlotlyChart, .stAltairChart, .stLineChart, .stBarChart, .stAreaChart,
+    .stExpander, .stTabs, .stColumns, .stContainer, .stSidebar,
+    .stMetric, .stProgress, .stSpinner, .stBalloons, .stSnow,
+    .stError, .stWarning, .stInfo, .stSuccess,
+    .stJson, .stCode, .stLatex, .stMath,
+    .stImage, .stVideo, .stAudio, .stDownloadButton,
+    .stForm, .stFormSubmitButton, .stFormClearButton,
+    .stSessionState, .stCache, .stExperimentalMemo, .stExperimentalSingleton {{
+        font-family: 'Ringside', sans-serif !important;
+    }}
+    
+    /* Specific styling for Streamlit text elements */
+    .stMarkdown, .stText, .stHeader, .stSubheader, .stTitle, .stCaption {{
+        font-family: 'Ringside', sans-serif !important;
+        font-weight: 400 !important;
+    }}
+    
+    /* Headers with specific weights */
+    h1, .stHeader h1, .stMarkdown h1 {{
+        font-family: 'Ringside', sans-serif !important;
+        font-weight: 600 !important;
+    }}
+    
+    h2, .stSubheader h2, .stMarkdown h2 {{
+        font-family: 'Ringside', sans-serif !important;
+        font-weight: 500 !important;
+    }}
+    
+    h3, h4, h5, h6, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {{
+        font-family: 'Ringside', sans-serif !important;
+        font-weight: 500 !important;
+    }}
+    
+    /* Form elements */
+    .stSelectbox, .stMultiselect, .stSlider, .stNumberInput, .stTextInput, .stCheckbox, .stRadio {{
+        font-family: 'Ringside', sans-serif !important;
+        font-weight: 400 !important;
+    }}
+    
+    /* Dataframes and tables */
+    .stDataFrame, .stDataFrame table, .stDataFrame th, .stDataFrame td {{
+        font-family: 'Ringside', sans-serif !important;
+        font-weight: 400 !important;
+    }}
+    
+    /* Buttons and interactive elements */
+    .stButton, .stFileUploader, .stDownloadButton {{
+        font-family: 'Ringside', sans-serif !important;
+        font-weight: 500 !important;
+    }}
+    
+    /* Sidebar specific styling */
+    .stSidebar, .stSidebar * {{
+        font-family: 'Ringside', sans-serif !important;
+    }}
+    
+    /* Charts and plots - ensure text elements use Ringside */
+    .js-plotly-plot, .plotly, .plotly-graph-div, .plotly-notifier {{
+        font-family: 'Ringside', sans-serif !important;
+    }}
+    
+    /* Force font loading and fallback */
+    * {{
+        font-family: 'Ringside', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+    }}
+    
+    /* Ensure welcome message uses Ringside font */
+    .welcome-message h2, .welcome-message p, .welcome-message ul, .welcome-message li {{
+        font-family: 'Ringside', sans-serif !important;
+    }}
+    
+    /* Ensure all Streamlit markdown content uses Ringside */
+    .stMarkdown div, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, 
+    .stMarkdown h4, .stMarkdown h5, .stMarkdown h6, .stMarkdown ul, .stMarkdown ol, 
+    .stMarkdown li, .stMarkdown strong, .stMarkdown em, .stMarkdown b, .stMarkdown i {{
         font-family: 'Ringside', sans-serif !important;
     }}
     
@@ -663,7 +751,10 @@ if uploaded_file is not None:
             hovermode="closest",
             height=500,
             showlegend=True,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            font=dict(family="Ringside", size=12),
+            title_font=dict(family="Ringside", size=16),
+            legend_font=dict(family="Ringside", size=11)
         )
         st.plotly_chart(fig_pct, use_container_width=True)
         
@@ -687,7 +778,10 @@ if uploaded_file is not None:
             hovermode="closest",
             height=500,
             showlegend=True,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            font=dict(family="Ringside", size=12),
+            title_font=dict(family="Ringside", size=16),
+            legend_font=dict(family="Ringside", size=11)
         )
         st.plotly_chart(fig_rebased, use_container_width=True)
         
@@ -736,6 +830,9 @@ if uploaded_file is not None:
             title="Return Distribution by Asset (Use dropdown to switch)",
             xaxis_title="Daily Return (%)",
             yaxis_title="Frequency",
+            font=dict(family="Ringside", size=12),
+            title_font=dict(family="Ringside", size=16),
+            legend_font=dict(family="Ringside", size=11),
             updatemenus=[{
                 "buttons": buttons,
                 "direction": "down",
@@ -743,7 +840,8 @@ if uploaded_file is not None:
                 "x": 0.1,
                 "xanchor": "left",
                 "y": 1.1,
-                "yanchor": "top"
+                "yanchor": "top",
+                "font": dict(family="Ringside", size=11)
             }],
             height=500
         )
@@ -782,8 +880,10 @@ if uploaded_file is not None:
             xaxis_title="Assets",
             yaxis_title="Assets",
             height=600,
-            xaxis={'side': 'bottom'},
-            yaxis={'side': 'left'}
+            font=dict(family="Ringside", size=12),
+            title_font=dict(family="Ringside", size=16),
+            xaxis={'side': 'bottom', 'tickfont': dict(family="Ringside", size=10)},
+            yaxis={'side': 'left', 'tickfont': dict(family="Ringside", size=10)}
         )
         
         st.plotly_chart(fig_corr, use_container_width=True)
@@ -913,7 +1013,10 @@ if uploaded_file is not None:
             xaxis_title="Volatility (Standard Deviation)",
             yaxis_title="Expected Return",
             template="plotly_white",
-            height=500
+            height=500,
+            font=dict(family="Ringside", size=12),
+            title_font=dict(family="Ringside", size=16),
+            legend_font=dict(family="Ringside", size=11)
         )
         
         st.plotly_chart(fig_frontier, use_container_width=True)
@@ -974,7 +1077,10 @@ if uploaded_file is not None:
             yaxis_title="Weight (%)",
             yaxis=dict(range=[0, 100]),
             template="plotly_white",
-            height=500
+            height=500,
+            font=dict(family="Ringside", size=12),
+            title_font=dict(family="Ringside", size=16),
+            legend_font=dict(family="Ringside", size=11)
         )
         
         st.plotly_chart(fig_weights, use_container_width=True)
@@ -1268,7 +1374,10 @@ if uploaded_file is not None:
                     yaxis_title="Usage (%)",
                     yaxis=dict(range=[0, 100]),
                     template="plotly_white",
-                    height=400
+                    height=400,
+                    font=dict(family="Ringside", size=12),
+                    title_font=dict(family="Ringside", size=16),
+                    legend_font=dict(family="Ringside", size=11)
                 )
                 
                 st.plotly_chart(fig_constraints, use_container_width=True)
@@ -1326,7 +1435,12 @@ if uploaded_file is not None:
             labels={'x': 'Asset', 'y': 'Weight (%)'},
             color_discrete_sequence=[RUBRICS_COLORS['blue']]
         )
-        fig_optimal.update_layout(height=400)
+        fig_optimal.update_layout(
+            height=400,
+            font=dict(family="Ringside", size=12),
+            title_font=dict(family="Ringside", size=16),
+            legend_font=dict(family="Ringside", size=11)
+        )
         st.plotly_chart(fig_optimal, use_container_width=True)
         
     except Exception as e:
@@ -1338,7 +1452,7 @@ if uploaded_file is not None:
 else:
     # Welcome message when no file is uploaded
     st.markdown("""
-    <div style="text-align: center; padding: 2rem;">
+    <div class="welcome-message" style="text-align: center; padding: 2rem;">
         <h2>Welcome to Rubrics MVO Portfolio Optimizer</h2>
         <p>Upload your Excel file to begin portfolio optimization analysis.</p>
         <p>The file should contain two sheets:</p>
