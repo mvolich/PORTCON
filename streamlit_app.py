@@ -23,7 +23,7 @@ import hashlib
 
 # Page configuration
 st.set_page_config(
-    page_title="Rubrics MVO Portfolio Optimizer",
+    page_title="Portfolio Construction Model",
     page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -289,12 +289,14 @@ def load_logo():
 
 logo = load_logo()
 
-# Header with logo
-col1, col2, col3 = st.columns([1, 2, 1])
+# Header with logo moved to top right
+col1, col2 = st.columns([4, 1])
+with col1:
+    # Empty space on the left
+    st.write("")
 with col2:
     if logo:
-        st.image(logo, width=200)
-    st.markdown('<div class="main-header"><h1>Rubrics MVO Portfolio Optimizer</h1></div>', unsafe_allow_html=True)
+        st.image(logo, width=150)
 
 # Sidebar for file upload and controls
 with st.sidebar:
@@ -725,7 +727,7 @@ if uploaded_file is not None:
     }).sort_values(by='Annualised Return (%)', ascending=False)
     
     # Main analysis section
-    st.header("Portfolio Analysis")
+    st.header("Portfolio Construction Model")
     
     # Data overview
     col1, col2, col3 = st.columns(3)
