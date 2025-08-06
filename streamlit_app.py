@@ -35,8 +35,8 @@ st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Ringside:wght@300;400;500;600;700&display=swap');
     
-    * {{
-        font-family: 'Ringside', sans-serif;
+    html, body, [class*="css"], div, span, table, th, td, button, input, label, textarea {{
+        font-family: 'Ringside', sans-serif !important;
     }}
     
     .main-header {{
