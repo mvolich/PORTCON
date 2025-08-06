@@ -88,10 +88,72 @@ st.markdown(f"""
         font-weight: 400 !important;
     }}
     
-    /* Dataframes and tables */
-    .stDataFrame, .stDataFrame table, .stDataFrame th, .stDataFrame td {{
+    /* Dataframes and tables - comprehensive styling */
+    .stDataFrame, .stDataFrame table, .stDataFrame th, .stDataFrame td,
+    .stDataFrame thead, .stDataFrame tbody, .stDataFrame tfoot,
+    .stDataFrame thead th, .stDataFrame tbody td, .stDataFrame tfoot td,
+    .dataframe, .dataframe table, .dataframe th, .dataframe td,
+    .dataframe thead, .dataframe tbody, .dataframe tfoot,
+    .dataframe thead th, .dataframe tbody td, .dataframe tfoot td,
+    div[data-testid="stDataFrame"], div[data-testid="stDataFrame"] table,
+    div[data-testid="stDataFrame"] th, div[data-testid="stDataFrame"] td,
+    div[data-testid="stDataFrame"] thead, div[data-testid="stDataFrame"] tbody,
+    div[data-testid="stDataFrame"] thead th, div[data-testid="stDataFrame"] tbody td {{
         font-family: 'Ringside', sans-serif !important;
         font-weight: 400 !important;
+    }}
+    
+    /* Target specific dataframe content including styled dataframes */
+    .stDataFrame .styled-table, .stDataFrame .styled-table th, .stDataFrame .styled-table td,
+    .stDataFrame .pandas-styler, .stDataFrame .pandas-styler th, .stDataFrame .pandas-styler td,
+    .data, .data th, .data td, .row_heading, .col_heading, .blank {{
+        font-family: 'Ringside', sans-serif !important;
+        font-weight: 400 !important;
+    }}
+    
+    /* Ensure all table elements use Ringside regardless of nesting */
+    table, table th, table td, table thead, table tbody, table tfoot,
+    table thead th, table tbody td, table tfoot td {{
+        font-family: 'Ringside', sans-serif !important;
+    }}
+    
+    /* Specifically target Pandas Styler elements used in Portfolio Weights, Metrics, and Constraints tables */
+    .stDataFrame .row0, .stDataFrame .row1, .stDataFrame .row2, .stDataFrame .row3, .stDataFrame .row4,
+    .stDataFrame .row5, .stDataFrame .row6, .stDataFrame .row7, .stDataFrame .row8, .stDataFrame .row9,
+    .stDataFrame .col0, .stDataFrame .col1, .stDataFrame .col2, .stDataFrame .col3, .stDataFrame .col4,
+    .stDataFrame .col5, .stDataFrame .col6, .stDataFrame .col7, .stDataFrame .col8, .stDataFrame .col9,
+    .stDataFrame .level0, .stDataFrame .level1, .stDataFrame .level2,
+    .stDataFrame .index_name, .stDataFrame .col_heading {{
+        font-family: 'Ringside', sans-serif !important;
+        font-weight: 400 !important;
+    }}
+    
+    /* Force font on all cell content */
+    .stDataFrame * {{
+        font-family: 'Ringside', sans-serif !important;
+    }}
+    
+    /* Additional targeting for styled dataframes with custom backgrounds */
+    [style*="background-color"] {{
+        font-family: 'Ringside', sans-serif !important;
+    }}
+    
+    /* Ensure Portfolio Weights Table, Portfolio Metrics, and Constraints Budget Usage use Ringside */
+    .stDataFrame div, .stDataFrame span, .stDataFrame p, .stDataFrame text,
+    .stDataFrame .ag-header-cell-text, .stDataFrame .ag-cell-value,
+    .stDataFrame .ag-header-group-text, .stDataFrame .ag-header-cell-label {{
+        font-family: 'Ringside', sans-serif !important;
+    }}
+    
+    /* Target AG Grid elements if used */
+    .ag-theme-streamlit, .ag-theme-streamlit .ag-header-cell-text,
+    .ag-theme-streamlit .ag-cell-value, .ag-theme-streamlit .ag-row {{
+        font-family: 'Ringside', sans-serif !important;
+    }}
+    
+    /* Ensure iframe content uses Ringside if applicable */
+    iframe {{
+        font-family: 'Ringside', sans-serif !important;
     }}
     
     /* Buttons and interactive elements */
