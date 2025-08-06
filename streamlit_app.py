@@ -1178,10 +1178,63 @@ if uploaded_file is not None:
         # Display the weights table
         st.dataframe(weights_styler, use_container_width=True)
         
-        # Portfolio Metrics - Single Column Format for Optimal Portfolio
+        # Portfolio Metrics - All Portfolios
         st.subheader("Portfolio Metrics")
         
-        # Find the optimal portfolio
+        # Create a formatted metrics display for all portfolios
+        df_metrics_display = pd.DataFrame(index=df_metrics.index, columns=df_metrics.columns)
+        
+        # Define which rows need percentage conversion
+        percent_rows = ['Expected Return', 'Expected Volatility', 'EM Exposure', 'AT1 Exposure',
+                       'Non-IG Exposure', 'Hybrid Exposure', 'T-Bill Exposure', 'Avg Yield']
+        
+        # Process each metric for all portfolios
+        for row in df_metrics.index:
+            for portfolio in df_metrics.columns:
+                try:
+                    # Get the raw value
+                    raw_value = float(df_metrics.loc[row, portfolio])
+                    
+                    if row == 'Avg Rating':
+                        # Convert to rating scale (no % symbol)
+                        try:
+                            rating_val = inverse_rating_scale.get(int(round(raw_value)), "A")
+                            df_metrics_display.loc[row, portfolio] = rating_val
+                        except:
+                            df_metrics_display.loc[row, portfolio] = "A"
+                            
+                    elif row == 'Sharpe (Hist Avg)':
+                        # Keep Sharpe ratio with 4 decimal places (no % symbol)
+                        df_metrics_display.loc[row, portfolio] = f"{raw_value:.4f}"
+                        
+                    elif row == 'Avg Duration':
+                        # Duration with 2 decimal places (no % symbol)
+                        df_metrics_display.loc[row, portfolio] = f"{raw_value:.2f}"
+                        
+                    elif row in percent_rows:
+                        # Convert to percentage and round to 2 decimal places
+                        pct_val = raw_value * 100
+                        if abs(pct_val) < 0.01:
+                            pct_val = 0.0
+                        df_metrics_display.loc[row, portfolio] = f"{pct_val:.2f}%"
+                        
+                    else:
+                        # All other numeric values get % symbol and 2 decimal places
+                        df_metrics_display.loc[row, portfolio] = f"{raw_value:.2f}%"
+                        
+                except Exception as e:
+                    # Set fallback values
+                    if row == 'Avg Rating':
+                        df_metrics_display.loc[row, portfolio] = "A"
+                    elif row == 'Sharpe (Hist Avg)':
+                        df_metrics_display.loc[row, portfolio] = "0.0000"
+                    elif row == 'Avg Duration':
+                        df_metrics_display.loc[row, portfolio] = "0.00"
+                    else:
+                        # All other values get % symbol
+                        df_metrics_display.loc[row, portfolio] = "0.00%"
+        
+        # Find the optimal portfolio for highlighting
         optimal_portfolio = None
         if 'Sharpe (Hist Avg)' in df_metrics.index:
             sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
@@ -1201,65 +1254,18 @@ if uploaded_file is not None:
                 tie_break_returns = expected_return_row[max_sharpe_portfolios]
                 optimal_portfolio = tie_break_returns.idxmax()
         
-        if optimal_portfolio:
-            # Create single-column metrics display for optimal portfolio
-            optimal_metrics = {}
-            
-            # Define which rows need percentage conversion
-            percent_rows = ['Expected Return', 'Expected Volatility', 'EM Exposure', 'AT1 Exposure',
-                           'Non-IG Exposure', 'Hybrid Exposure', 'T-Bill Exposure', 'Avg Yield']
-            
-            # Process each metric for the optimal portfolio
-            for row in df_metrics.index:
-                try:
-                    # Get the value for the optimal portfolio
-                    raw_value = float(df_metrics.loc[row, optimal_portfolio])
-                    
-                    if row == 'Avg Rating':
-                        # Convert to rating scale (no % symbol)
-                        try:
-                            rating_val = inverse_rating_scale.get(int(round(raw_value)), "A")
-                            optimal_metrics[row] = rating_val
-                        except:
-                            optimal_metrics[row] = "A"
-                            
-                    elif row == 'Sharpe (Hist Avg)':
-                        # Keep Sharpe ratio with 4 decimal places (no % symbol)
-                        optimal_metrics[row] = f"{raw_value:.4f}"
-                        
-                    elif row == 'Avg Duration':
-                        # Duration with 2 decimal places (no % symbol)
-                        optimal_metrics[row] = f"{raw_value:.2f}"
-                        
-                    elif row in percent_rows:
-                        # Convert to percentage and round to 2 decimal places
-                        pct_val = raw_value * 100
-                        if abs(pct_val) < 0.01:
-                            pct_val = 0.0
-                        optimal_metrics[row] = f"{pct_val:.2f}%"
-                        
-                    else:
-                        # All other numeric values get % symbol and 2 decimal places
-                        optimal_metrics[row] = f"{raw_value:.2f}%"
-                        
-                except Exception as e:
-                    # Set fallback values
-                    if row == 'Avg Rating':
-                        optimal_metrics[row] = "A"
-                    elif row == 'Sharpe (Hist Avg)':
-                        optimal_metrics[row] = "0.0000"
-                    elif row == 'Avg Duration':
-                        optimal_metrics[row] = "0.00"
-                    else:
-                        # All other values get % symbol
-                        optimal_metrics[row] = "0.00%"
-            
-            # Create DataFrame for display
-            metrics_df = pd.DataFrame(list(optimal_metrics.items()), columns=['Metric', f'Portfolio {optimal_portfolio}'])
-            metrics_df = metrics_df.set_index('Metric')
-            
-            # Display the single-column metrics table
-            st.dataframe(metrics_df, use_container_width=True)
+        # Create styled dataframe with optimal portfolio highlighting
+        styler = df_metrics_display.style
+        
+        # Add green border and bold text to the optimal portfolio column
+        if optimal_portfolio and optimal_portfolio in df_metrics_display.columns:
+            styler = styler.set_properties(
+                **{'border-left': '3px solid green', 'border-right': '3px solid green', 'font-weight': 'bold'},
+                subset=[optimal_portfolio]
+            )
+        
+        # Display the multi-column metrics table
+        st.dataframe(styler, use_container_width=True)
         
         # Constraints Budget Usage
         st.subheader("Constraints Budget Usage")
