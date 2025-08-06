@@ -975,43 +975,47 @@ if uploaded_file is not None:
                 # Set to zeros as fallback
                 df_metrics_display.loc[row] = [0.0] * len(df_metrics.columns)
         
-        # Apply green gridlines around optimal portfolio column
-        def color_optimal_portfolio_column(df):
-            # Create a copy of the dataframe for styling
-            styled_df = df.copy()
+        # Find the optimal portfolio column
+        optimal_portfolio = None
+        if 'Sharpe (Hist Avg)' in df_metrics_display.index:
+            sharpe_row = pd.to_numeric(df_metrics_display.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
+            expected_return_row = pd.to_numeric(df_metrics_display.loc['Expected Return'], errors='coerce').fillna(0)
             
-            # Find the optimal portfolio column
-            if 'Sharpe (Hist Avg)' in df.index:
-                sharpe_row = pd.to_numeric(df.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
-                expected_return_row = pd.to_numeric(df.loc['Expected Return'], errors='coerce').fillna(0)
-                
-                # Find the maximum Sharpe ratio
-                max_sharpe = sharpe_row.max()
-                
-                # Find all portfolios with the maximum Sharpe ratio
-                max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
-                
-                if len(max_sharpe_portfolios) == 1:
-                    optimal_portfolio = max_sharpe_portfolios[0]
-                else:
-                    # Multiple portfolios have the same maximum Sharpe ratio
-                    # Select the one with the highest expected return
-                    tie_break_returns = expected_return_row[max_sharpe_portfolios]
-                    optimal_portfolio = tie_break_returns.idxmax()
-                
-                # Apply green border to the optimal portfolio column
-                for col in df.columns:
-                    if col == optimal_portfolio:
-                        styled_df[col] = styled_df[col].apply(lambda x: f'border-left: 3px solid green; border-right: 3px solid green; {x}')
-                    else:
-                        styled_df[col] = styled_df[col].apply(lambda x: f'{x}')
+            # Find the maximum Sharpe ratio
+            max_sharpe = sharpe_row.max()
             
-            return styled_df
+            # Find all portfolios with the maximum Sharpe ratio
+            max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
+            
+            if len(max_sharpe_portfolios) == 1:
+                optimal_portfolio = max_sharpe_portfolios[0]
+            else:
+                # Multiple portfolios have the same maximum Sharpe ratio
+                # Select the one with the highest expected return
+                tie_break_returns = expected_return_row[max_sharpe_portfolios]
+                optimal_portfolio = tie_break_returns.idxmax()
         
-        # Apply the styling
-        df_metrics_styled = color_optimal_portfolio_column(df_metrics_display)
+        # Build a Styler for the Portfolio Metrics table
+        styler = df_metrics_display.style
         
-        st.dataframe(df_metrics_styled, use_container_width=True)
+        # Format decimals and percentages
+        styler = styler.format({
+            'Expected Return': "{:.2f}%",
+            'Expected Volatility': "{:.2f}%",
+            'Sharpe (Hist Avg)': "{:.2f}",
+            'Avg Yield': "{:.2f}%",
+            'Avg Duration': "{:.2f}",
+            'Avg Rating': "{}"
+        })
+        
+        # Add green borders to the optimal portfolio column
+        if optimal_portfolio and optimal_portfolio in df_metrics_display.columns:
+            styler = styler.set_properties(
+                **{'border-left': '3px solid green', 'border-right': '3px solid green'},
+                subset=[optimal_portfolio]
+            )
+        
+        st.dataframe(styler, use_container_width=True)
         
         # Constraints Budget Usage
         st.subheader("🔒 Constraints Budget Usage")
@@ -1087,44 +1091,38 @@ if uploaded_file is not None:
             else:
                 return 'background-color: #ccffcc'  # Green for <70%
         
-        # Apply green gridlines around optimal portfolio column
-        def color_optimal_portfolio_column_constraints(df):
-            # Create a copy of the dataframe for styling
-            styled_df = df.copy()
+        # Find the optimal portfolio column
+        optimal_portfolio = None
+        if 'Sharpe (Hist Avg)' in df_metrics.index:
+            sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
+            expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
             
-            # Find the optimal portfolio column
-            if 'Sharpe (Hist Avg)' in df_metrics.index:
-                sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
-                expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
-                
-                # Find the maximum Sharpe ratio
-                max_sharpe = sharpe_row.max()
-                
-                # Find all portfolios with the maximum Sharpe ratio
-                max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
-                
-                if len(max_sharpe_portfolios) == 1:
-                    optimal_portfolio = max_sharpe_portfolios[0]
-                else:
-                    # Multiple portfolios have the same maximum Sharpe ratio
-                    # Select the one with the highest expected return
-                    tie_break_returns = expected_return_row[max_sharpe_portfolios]
-                    optimal_portfolio = tie_break_returns.idxmax()
-                
-                # Apply green border to the optimal portfolio column
-                for col in df.columns:
-                    if col == optimal_portfolio:
-                        styled_df[col] = styled_df[col].apply(lambda x: f'border-left: 3px solid green; border-right: 3px solid green; {x}')
-                    else:
-                        styled_df[col] = styled_df[col].apply(lambda x: f'{x}')
+            # Find the maximum Sharpe ratio
+            max_sharpe = sharpe_row.max()
             
-            return styled_df
+            # Find all portfolios with the maximum Sharpe ratio
+            max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
+            
+            if len(max_sharpe_portfolios) == 1:
+                optimal_portfolio = max_sharpe_portfolios[0]
+            else:
+                # Multiple portfolios have the same maximum Sharpe ratio
+                # Select the one with the highest expected return
+                tie_break_returns = expected_return_row[max_sharpe_portfolios]
+                optimal_portfolio = tie_break_returns.idxmax()
         
-        # Apply both color coding and optimal portfolio column highlighting
-        df_constraint_usage_styled = color_optimal_portfolio_column_constraints(df_constraint_usage)
+        # 1) Colour cells by usage level
+        styled = df_constraint_usage.style.applymap(color_constraint_usage)
         
-        # Display constraint usage table with color coding and green gridlines
-        st.dataframe(df_constraint_usage_styled.style.applymap(color_constraint_usage), use_container_width=True)
+        # 2) Add a green border to the optimal‐portfolio column
+        if optimal_portfolio and optimal_portfolio in df_constraint_usage.columns:
+            styled = styled.set_properties(
+                **{'border-left': '3px solid green', 'border-right': '3px solid green'},
+                subset=[optimal_portfolio]
+            )
+        
+        # 3) Render it
+        st.dataframe(styled, use_container_width=True)
         
         # Visual representation of constraint usage
         st.subheader("Constraint Usage Visualization")
