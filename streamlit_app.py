@@ -966,40 +966,40 @@ if uploaded_file is not None:
         
             st.divider()
     
-    # Individual Fund Tabs
-    with tab2:
-        st.header("🔍 GFI Fund Analysis")
-        st.info("Detailed analysis for: **GFI**")
+    # Function to create individual fund analysis
+    def create_fund_analysis(fund_name):
+        st.header(f"🔍 {fund_name} Fund Analysis")
+        st.info(f"Detailed analysis for: **{fund_name}**")
         
         # Main analysis section
         st.subheader("Portfolio Construction Model")
-    
-    # Data overview
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Number of Assets", len(df_pct_change.columns))
-    with col2:
-        st.metric("Time Period", f"{df_pct_change.index.min().date()} to {df_pct_change.index.max().date()}")
-    with col3:
-        st.metric("Trading Days", len(df_pct_change))
-    
-    # Exploratory Data Analysis Section
-    # Using a custom expander approach to avoid text overlap issues
-    expander_key = "eda_expander"
-    if expander_key not in st.session_state:
-        st.session_state[expander_key] = False
-    
-    # Custom expander header
-    col1, col2 = st.columns([1, 20])
-    with col1:
-        if st.button("▶" if not st.session_state[expander_key] else "▼", key="eda_toggle"):
-            st.session_state[expander_key] = not st.session_state[expander_key]
-    with col2:
-        st.markdown("**Exploratory Data Analysis**")
-    
-    # Expander content
-    if st.session_state[expander_key]:
-        st.subheader("Data Processing Workflow")
+        
+        # Data overview
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Number of Assets", len(df_pct_change.columns))
+        with col2:
+            st.metric("Time Period", f"{df_pct_change.index.min().date()} to {df_pct_change.index.max().date()}")
+        with col3:
+            st.metric("Trading Days", len(df_pct_change))
+        
+        # Exploratory Data Analysis Section
+        # Using a custom expander approach to avoid text overlap issues
+        expander_key = f"eda_expander_{fund_name}"
+        if expander_key not in st.session_state:
+            st.session_state[expander_key] = False
+        
+        # Custom expander header
+        col1, col2 = st.columns([1, 20])
+        with col1:
+            if st.button("▶" if not st.session_state[expander_key] else "▼", key=f"eda_toggle_{fund_name}"):
+                st.session_state[expander_key] = not st.session_state[expander_key]
+        with col2:
+            st.markdown("**Exploratory Data Analysis**")
+        
+        # Expander content
+        if st.session_state[expander_key]:
+            st.subheader("Data Processing Workflow")
         
         # Show raw data structure
         col1, col2 = st.columns(2)
@@ -1226,36 +1226,36 @@ if uploaded_file is not None:
     
     # End of custom expander content
     
-    # Run optimization for selected fund
-    st.header(f"{selected_fund} Portfolio Optimization")
-    
-    # Display current constraints being used for optimization
-    st.info(f"**Current constraints for {selected_fund}:** AT1: {st.session_state.fund_constraints[selected_fund]['max_at1']*100:.1f}%, "
-            f"EM: {st.session_state.fund_constraints[selected_fund]['max_em']*100:.1f}%, "
-            f"Non-IG: {st.session_state.fund_constraints[selected_fund]['max_non_ig']*100:.1f}%, "
-            f"Hybrid: {st.session_state.fund_constraints[selected_fund]['max_hybrid']*100:.1f}%, "
-            f"Duration: {st.session_state.fund_constraints[selected_fund]['max_duration'] if st.session_state.fund_constraints[selected_fund]['max_duration'] else 'None'} yrs, "
-            f"Min Rating: {inverse_rating_scale[st.session_state.fund_constraints[selected_fund]['min_rating']]}")
-    
-    try:
-        # Show optimization status
-        with st.spinner("Running portfolio optimization with current constraints..."):
-            returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
-                selected_fund, df_pct_change, df_metadata, 
-                st.session_state.fund_constraints[selected_fund], rf_rate_hist
-            )
-        st.success("✅ Optimization completed successfully!")
+        # Run optimization for selected fund
+        st.header(f"{fund_name} Portfolio Optimization")
         
-        # Efficient frontier plot
-        st.subheader("Efficient Frontier")
+        # Display current constraints being used for optimization
+        st.info(f"**Current constraints for {fund_name}:** AT1: {st.session_state.fund_constraints[fund_name]['max_at1']*100:.1f}%, "
+                f"EM: {st.session_state.fund_constraints[fund_name]['max_em']*100:.1f}%, "
+                f"Non-IG: {st.session_state.fund_constraints[fund_name]['max_non_ig']*100:.1f}%, "
+                f"Hybrid: {st.session_state.fund_constraints[fund_name]['max_hybrid']*100:.1f}%, "
+                f"Duration: {st.session_state.fund_constraints[fund_name]['max_duration'] if st.session_state.fund_constraints[fund_name]['max_duration'] else 'None'} yrs, "
+                f"Min Rating: {inverse_rating_scale[st.session_state.fund_constraints[fund_name]['min_rating']]}")
         
-        # Determine optimal portfolio for marking
-        if 'Sharpe (Hist Avg)' in df_metrics.index:
-            # Get Sharpe ratios and expected returns
-            sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
-            expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
+        try:
+            # Show optimization status
+            with st.spinner("Running portfolio optimization with current constraints..."):
+                returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
+                    fund_name, df_pct_change, df_metadata, 
+                    st.session_state.fund_constraints[fund_name], rf_rate_hist
+                )
+            st.success("✅ Optimization completed successfully!")
             
-            # Find the maximum Sharpe ratio
+            # Efficient frontier plot
+            st.subheader("Efficient Frontier")
+            
+            # Determine optimal portfolio for marking
+            if 'Sharpe (Hist Avg)' in df_metrics.index:
+                # Get Sharpe ratios and expected returns
+                sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
+                expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
+                
+                # Find the maximum Sharpe ratio
             max_sharpe = sharpe_row.max()
             
             # Find all portfolios with the maximum Sharpe ratio
@@ -1318,7 +1318,7 @@ if uploaded_file is not None:
             ))
         
         fig_frontier.update_layout(
-            title=f"{selected_fund} Efficient Frontier",
+            title=f"{fund_name} Efficient Frontier",
             xaxis_title="Volatility (Standard Deviation)",
             yaxis_title="Expected Return",
             template="plotly_white",
@@ -1441,7 +1441,7 @@ if uploaded_file is not None:
             )
         
         fig_weights.update_layout(
-            title=f"{selected_fund} Portfolio Composition",
+            title=f"{fund_name} Portfolio Composition",
             xaxis_title="Portfolios Along Efficient Frontier",
             yaxis_title="Weight (%)",
             yaxis=dict(range=[0, 100]),
@@ -1576,7 +1576,7 @@ if uploaded_file is not None:
         st.subheader("Constraints Budget Usage")
         
         # Get current constraints from session state
-        current_constraints = st.session_state.fund_constraints[selected_fund]
+        current_constraints = st.session_state.fund_constraints[fund_name]
         
         # Calculate constraint usage for each portfolio
         constraint_usage = {}
@@ -1797,17 +1797,15 @@ if uploaded_file is not None:
         st.write(f"Error details: {e}")
         st.info("Try adjusting the constraints in the sidebar to make the optimization feasible.")
     
-    # Tab 3: GCF Analysis
-    with tab3:
-        st.header("🔍 GCF Fund Analysis")
-        st.info("Detailed analysis for: **GCF**")
-        st.write("GCF analysis will be displayed here with the same structure as GFI.")
+    # Individual Fund Tabs
+    with tab2:
+        create_fund_analysis("GFI")
     
-    # Tab 4: EYF Analysis  
+    with tab3:
+        create_fund_analysis("GCF")
+    
     with tab4:
-        st.header("🔍 EYF Fund Analysis")
-        st.info("Detailed analysis for: **EYF**")
-        st.write("EYF analysis will be displayed here with the same structure as GFI.")
+        create_fund_analysis("EYF")
 
 else:
     # Welcome message when no file is uploaded
