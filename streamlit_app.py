@@ -806,26 +806,8 @@ if uploaded_file is not None:
         if comparison_data:
             comparison_df = pd.DataFrame(comparison_data).set_index('Fund')
             
-            # Highlight best performing fund
-            def highlight_best_sharpe(row):
-                if row.name == 'Sharpe Ratio':
-                    # Find the fund with highest Sharpe ratio
-                    sharpe_values = [float(cio_results[fund]['sharpe_ratio']) for fund in cio_results.keys() if cio_results[fund] is not None]
-                    max_sharpe = max(sharpe_values)
-                    
-                    styles = []
-                    for fund in comparison_df.index:
-                        if cio_results[fund] is not None and abs(cio_results[fund]['sharpe_ratio'] - max_sharpe) < 0.0001:
-                            styles.append('background-color: #90EE90; font-weight: bold')
-                        else:
-                            styles.append('')
-                    return styles
-                else:
-                    return [''] * len(comparison_df.index)
-            
-            # Style the comparison table
-            styled_comparison = comparison_df.T.style.apply(highlight_best_sharpe, axis=1)
-            st.dataframe(styled_comparison, use_container_width=True)
+            # Display the comparison table without highlighting
+            st.dataframe(comparison_df.T, use_container_width=True)
             
             # Performance Visualization
             col1, col2 = st.columns(2)
