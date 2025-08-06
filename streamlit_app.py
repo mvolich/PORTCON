@@ -805,7 +805,7 @@ if uploaded_file is not None:
                 # Performance Visualization
                 col1, col2 = st.columns(2)
                 
-    with col1:
+                with col1:
                     # Risk-Return Scatter Plot
                     fig_risk_return = go.Figure()
                     
@@ -843,7 +843,7 @@ if uploaded_file is not None:
                     
                     st.plotly_chart(fig_risk_return, use_container_width=True)
                 
-    with col2:
+                with col2:
                     # Cross-Fund Efficient Frontier
                     fig_frontier_comp = go.Figure()
                     
