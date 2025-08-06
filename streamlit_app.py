@@ -726,6 +726,19 @@ if uploaded_file is not None:
         'Standard Deviation (%)': annualized_std
     }).sort_values(by='Annualised Return (%)', ascending=False)
     
+    # Process data
+    df_pct_change, df_metadata, df_common = process_data(df_raw, df_metadata_raw)
+    
+    # Calculate risk-free rate
+    if 'US T-Bills' in df_pct_change.columns:
+        rf_rate_hist = df_pct_change['US T-Bills'].mean() * 252
+    else:
+        rf_rate_hist = 0.0  # Default or user-defined fallback
+    
+    # Calculate annualized returns and volatility
+    annualized_returns = df_pct_change.mean() * 252 * 100
+    annualized_std = df_pct_change.std() * np.sqrt(252) * 100
+    
     # Create tabs for different views
     tab1, tab2, tab3, tab4 = st.tabs(["CIO Comparison", "GFI", "GCF", "EYF"])
     
@@ -810,9 +823,9 @@ if uploaded_file is not None:
                     fig_risk_return = go.Figure()
                     
                     fund_colors = [RUBRICS_COLORS['blue'], RUBRICS_COLORS['medium_blue'], 
-                                  RUBRICS_COLORS['light_blue'], RUBRICS_COLORS['grey'], 
-                                  RUBRICS_COLORS['orange']]
-                    
+                         RUBRICS_COLORS['light_blue'], RUBRICS_COLORS['grey'], 
+                         RUBRICS_COLORS['orange']]
+        
                     for i, (fund_name, result) in enumerate(cio_results.items()):
                         if result is not None:
                             color = fund_colors[i % len(fund_colors)]
@@ -834,7 +847,7 @@ if uploaded_file is not None:
                         title="Fund Risk-Return Profile",
                         xaxis_title="Expected Volatility (%)",
                         yaxis_title="Expected Return (%)",
-                        template="plotly_white",
+            template="plotly_white",
                         height=400,
                         font=dict(family="Ringside", size=12),
                         title_font=dict(family="Ringside", size=16),
@@ -887,8 +900,8 @@ if uploaded_file is not None:
                                                 f"Volatility: {result['expected_volatility']*100:.2f}%<br>" +
                                                 f"Sharpe: {result['sharpe_ratio']:.4f}<extra></extra>"
                                 ))
-                                
-                            except Exception as e:
+                    
+            except Exception as e:
                                 # If frontier generation fails, just plot the optimal point
                                 fig_frontier_comp.add_trace(go.Scatter(
                                     x=[result['expected_volatility']*100],
@@ -958,42 +971,152 @@ if uploaded_file is not None:
         st.header(f"🔍 {fund_name} Fund Analysis")
         st.info(f"Detailed analysis for: **{fund_name}**")
         
-        # Display current constraints for this fund
-        current_constraints = st.session_state.fund_constraints[fund_name]
-        
-        st.subheader(f"Current Constraints for {fund_name}")
-        col1, col2 = st.columns(2)
-        
+        # Data overview
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Max Non-IG", f"{current_constraints['max_non_ig']*100:.1f}%")
-            st.metric("Max EM", f"{current_constraints['max_em']*100:.1f}%")
-            st.metric("Max AT1", f"{current_constraints['max_at1']*100:.1f}%")
-        
+            st.metric("Number of Assets", len(df_pct_change.columns))
         with col2:
-            st.metric("Max Duration", f"{current_constraints['max_duration']:.1f} years" if current_constraints['max_duration'] else "None")
-            st.metric("Min Rating", inverse_rating_scale[current_constraints['min_rating']])
-            st.metric("Max Hybrid", f"{current_constraints['max_hybrid']*100:.1f}%")
+            st.metric("Time Period", f"{df_pct_change.index.min().date()} to {df_pct_change.index.max().date()}")
+        with col3:
+            st.metric("Trading Days", len(df_pct_change))
         
-        # Placeholder for detailed analysis
-        st.info("💡 Upload data to see detailed portfolio optimization and analysis for this fund.")
+        # Portfolio Optimization Section
+        st.header(f"{fund_name} Portfolio Optimization")
         
-        # Show what will be available when data is uploaded
-        st.subheader("Available Analysis")
-        analysis_features = [
-            "📊 Portfolio Optimization Results",
-            "📈 Efficient Frontier Visualization", 
-            "🎯 Optimal Portfolio Weights",
-            "📋 Portfolio Metrics Table",
-            "⚖️ Constraints Budget Usage",
-            "📉 Sharpe Ratio Analysis",
-            "🔍 Exploratory Data Analysis"
-        ]
+        # Display current constraints being used for optimization
+        current_constraints = st.session_state.fund_constraints[fund_name]
+        st.info(f"**Current constraints for {fund_name}:** AT1: {current_constraints['max_at1']*100:.1f}%, "
+                f"EM: {current_constraints['max_em']*100:.1f}%, "
+                f"Non-IG: {current_constraints['max_non_ig']*100:.1f}%, "
+                f"Hybrid: {current_constraints['max_hybrid']*100:.1f}%, "
+                f"Duration: {current_constraints['max_duration'] if current_constraints['max_duration'] else 'None'} yrs, "
+                f"Min Rating: {inverse_rating_scale[current_constraints['min_rating']]}")
         
-        for feature in analysis_features:
-            st.write(f"• {feature}")
+        try:
+            # Show optimization status
+            with st.spinner("Running portfolio optimization with current constraints..."):
+                returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
+                    fund_name, df_pct_change, df_metadata, current_constraints, rf_rate_hist
+                )
+            st.success("✅ Optimization completed successfully!")
+            
+            # Find optimal portfolio
+        optimal_portfolio = None
+        if 'Sharpe (Hist Avg)' in df_metrics.index:
+            sharpe_row = pd.to_numeric(df_metrics.loc['Sharpe (Hist Avg)'], errors='coerce').fillna(0)
+            expected_return_row = pd.to_numeric(df_metrics.loc['Expected Return'], errors='coerce').fillna(0)
+            
+            max_sharpe = sharpe_row.max()
+            max_sharpe_portfolios = sharpe_row[sharpe_row == max_sharpe].index.tolist()
+            
+            if len(max_sharpe_portfolios) == 1:
+                optimal_portfolio = max_sharpe_portfolios[0]
+            else:
+                tie_break_returns = expected_return_row[max_sharpe_portfolios]
+                optimal_portfolio = tie_break_returns.idxmax()
         
-        st.markdown("---")
-        st.write(f"**Note:** Modify constraints for {fund_name} using the sidebar controls, then upload data to run the optimization.")
+                st.success(f"🎯 **Optimal Portfolio identified:** {optimal_portfolio} (Sharpe: {max_sharpe:.4f})")
+            
+            # Portfolio Metrics Table
+            st.subheader("📊 Portfolio Metrics")
+            
+            # Format the metrics for display
+            df_metrics_display = df_metrics.copy()
+            
+            # Format each row appropriately
+            for idx in df_metrics_display.index:
+                if idx == 'Sharpe (Hist Avg)':
+                    # Keep Sharpe as 4 decimal places, no %
+                    df_metrics_display.loc[idx] = df_metrics_display.loc[idx].apply(lambda x: f"{x:.4f}")
+                elif idx == 'Avg Duration':
+                    # Duration: 2 decimal places, no %
+                    df_metrics_display.loc[idx] = df_metrics_display.loc[idx].apply(lambda x: f"{x:.2f}")
+                elif idx == 'Avg Rating':
+                    # Rating: convert to letter grade
+                    df_metrics_display.loc[idx] = df_metrics_display.loc[idx].apply(lambda x: inverse_rating_scale.get(int(round(x)), "A"))
+                else:
+                    # All other metrics: 2 decimal places with %
+                    df_metrics_display.loc[idx] = df_metrics_display.loc[idx].apply(lambda x: f"{x*100:.2f}%")
+            
+            # Highlight optimal portfolio column
+            if optimal_portfolio:
+                df_metrics_styled = df_metrics_display.style.set_properties(
+                    subset=[optimal_portfolio], 
+                    **{'border': '3px solid green', 'font-weight': 'bold'}
+                )
+                st.dataframe(df_metrics_styled, use_container_width=True)
+            else:
+                st.dataframe(df_metrics_display, use_container_width=True)
+            
+            # Efficient Frontier
+            st.subheader("📈 Efficient Frontier")
+            
+            fig_frontier = go.Figure()
+            
+            # Plot efficient frontier
+            fig_frontier.add_trace(go.Scatter(
+                x=[r*100 for r in risks_list],
+                y=[ret*100 for ret in returns_list],
+                mode='lines',
+                name='Efficient Frontier',
+                line=dict(color=RUBRICS_COLORS['blue'], width=3),
+                hovertemplate='Volatility: %{x:.2f}%<br>Return: %{y:.2f}%<extra></extra>'
+            ))
+            
+            # Add individual portfolio points
+            portfolio_returns = [df_metrics.loc['Expected Return', col]*100 for col in df_metrics.columns]
+            portfolio_risks = [df_metrics.loc['Expected Volatility', col]*100 for col in df_metrics.columns]
+            portfolio_names = list(df_metrics.columns)
+            
+            fig_frontier.add_trace(go.Scatter(
+                x=portfolio_risks,
+                y=portfolio_returns,
+                mode='markers',
+                name='Portfolios',
+                marker=dict(
+                    color=RUBRICS_COLORS['orange'],
+                    size=8,
+                    line=dict(color='white', width=1)
+                ),
+                text=portfolio_names,
+                hovertemplate='<b>%{text}</b><br>Volatility: %{x:.2f}%<br>Return: %{y:.2f}%<extra></extra>'
+            ))
+            
+            # Highlight optimal portfolio
+            if optimal_portfolio:
+                opt_return = df_metrics.loc['Expected Return', optimal_portfolio]*100
+                opt_risk = df_metrics.loc['Expected Volatility', optimal_portfolio]*100
+                
+                fig_frontier.add_trace(go.Scatter(
+                    x=[opt_risk],
+                    y=[opt_return],
+                    mode='markers',
+                    name='Optimal Portfolio',
+                    marker=dict(
+                        color='green',
+                        size=15,
+                        symbol='star',
+                        line=dict(color='white', width=2)
+                    ),
+                    hovertemplate=f'<b>{optimal_portfolio}</b><br>Volatility: %{{x:.2f}}%<br>Return: %{{y:.2f}}%<extra></extra>'
+                ))
+            
+            fig_frontier.update_layout(
+                title=f"Efficient Frontier for {fund_name}",
+                xaxis_title="Expected Volatility (%)",
+                yaxis_title="Expected Return (%)",
+                height=600,
+                hovermode="closest",
+                font=dict(family="Ringside", size=12),
+                title_font=dict(family="Ringside", size=16),
+                legend_font=dict(family="Ringside", size=11)
+            )
+            
+            st.plotly_chart(fig_frontier, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Portfolio optimization failed for {fund_name}: {str(e)}")
+            st.info("Try adjusting the constraints in the sidebar to make the optimization feasible.")
     
     # Individual Fund Tabs
     with tab2:
@@ -1017,4 +1140,4 @@ else:
             <li><strong>Sheet2:</strong> Asset metadata (ratings, duration, etc.)</li>
         </ul>
     </div>
-    """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True) 
