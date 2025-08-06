@@ -79,6 +79,49 @@ st.markdown(f"""
     .stButton > button:hover {{
         background-color: {RUBRICS_COLORS['medium_blue']};
     }}
+    
+    /* Fix expander text overlap issue */
+    .streamlit-expanderHeader {{
+        font-family: 'Ringside', sans-serif !important;
+        font-size: 1.1rem !important;
+        font-weight: 500 !important;
+        color: #262730 !important;
+        padding: 0.75rem 1rem !important;
+        background-color: #f0f2f6 !important;
+        border-radius: 0.5rem !important;
+        border: 1px solid #e0e0e0 !important;
+        margin-bottom: 0.5rem !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+    }}
+    
+    .streamlit-expanderHeader:hover {{
+        background-color: #e6e9ef !important;
+        border-color: #d0d0d0 !important;
+    }}
+    
+    /* Ensure proper spacing for expander content */
+    .streamlit-expanderContent {{
+        padding: 1rem !important;
+        background-color: #ffffff !important;
+        border: 1px solid #e0e0e0 !important;
+        border-top: none !important;
+        border-radius: 0 0 0.5rem 0.5rem !important;
+        margin-bottom: 1rem !important;
+    }}
+    
+    /* Fix any icon overlap issues */
+    .streamlit-expanderHeader .streamlit-expanderHeaderIcon {{
+        margin-right: 0.5rem !important;
+        vertical-align: middle !important;
+    }}
+    
+    /* Ensure text doesn't overlap with icons */
+    .streamlit-expanderHeader span {{
+        display: inline-block !important;
+        vertical-align: middle !important;
+        line-height: 1.4 !important;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -544,7 +587,21 @@ if uploaded_file is not None:
         st.metric("Trading Days", len(df_pct_change))
     
     # Exploratory Data Analysis Section
-    with st.expander("Exploratory Data Analysis", expanded=False):
+    # Using a custom expander approach to avoid text overlap issues
+    expander_key = "eda_expander"
+    if expander_key not in st.session_state:
+        st.session_state[expander_key] = False
+    
+    # Custom expander header
+    col1, col2 = st.columns([1, 20])
+    with col1:
+        if st.button("▶" if not st.session_state[expander_key] else "▼", key="eda_toggle"):
+            st.session_state[expander_key] = not st.session_state[expander_key]
+    with col2:
+        st.markdown("**Exploratory Data Analysis**")
+    
+    # Expander content
+    if st.session_state[expander_key]:
         st.subheader("Data Processing Workflow")
         
         # Show raw data structure
@@ -757,6 +814,8 @@ if uploaded_file is not None:
         top_assets = performance_summary.head(3)
         for i, (asset, row) in enumerate(top_assets.iterrows(), 1):
             st.write(f"{i}. **{asset}**: Return: {row['Annualised Return (%)']:.2f}%, Vol: {row['Annualised Volatility (%)']:.2f}%, Sharpe: {row['Sharpe Ratio']:.3f}")
+    
+    # End of custom expander content
     
     # Run optimization for selected fund
     st.header(f"{selected_fund} Portfolio Optimization")
