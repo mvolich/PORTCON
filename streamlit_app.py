@@ -869,30 +869,89 @@ if uploaded_file is not None:
                 st.plotly_chart(fig_risk_return, use_container_width=True)
             
             with col2:
-                # Sharpe Ratio Comparison
-                fund_names = [fund for fund, result in cio_results.items() if result is not None]
-                sharpe_values = [result['sharpe_ratio'] for fund, result in cio_results.items() if result is not None]
+                # Cross-Fund Efficient Frontier
+                fig_frontier_comp = go.Figure()
                 
-                fig_sharpe_comp = go.Figure()
-                fig_sharpe_comp.add_trace(go.Bar(
-                    x=fund_names,
-                    y=sharpe_values,
-                    marker_color=[fund_colors[i % len(fund_colors)] for i in range(len(fund_names))],
-                    text=[f'{val:.4f}' for val in sharpe_values],
-                    textposition='auto'
-                ))
+                # Plot efficient frontier for each fund
+                for i, (fund_name, result) in enumerate(cio_results.items()):
+                    if result is not None:
+                        color = fund_colors[i % len(fund_colors)]
+                        
+                        # Get the full efficient frontier data for this fund
+                        fund_constraints = st.session_state.fund_constraints[fund_name]
+                        try:
+                            returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
+                                fund_name, df_pct_change, df_metadata, fund_constraints, rf_rate_hist
+                            )
+                            
+                            # Plot the efficient frontier line
+                            fig_frontier_comp.add_trace(go.Scatter(
+                                x=[r*100 for r in risks_list],
+                                y=[ret*100 for ret in returns_list],
+                                mode='lines',
+                                name=f'{fund_name} Frontier',
+                                line=dict(color=color, width=2),
+                                opacity=0.7,
+                                hovertemplate=f'<b>{fund_name}</b><br>Volatility: %{{x:.2f}}%<br>Return: %{{y:.2f}}%<extra></extra>'
+                            ))
+                            
+                            # Highlight the optimal portfolio point
+                            fig_frontier_comp.add_trace(go.Scatter(
+                                x=[result['expected_volatility']*100],
+                                y=[result['expected_return']*100],
+                                mode='markers',
+                                name=f'{fund_name} Optimal',
+                                marker=dict(
+                                    color=color,
+                                    size=12,
+                                    symbol='star',
+                                    line=dict(color='white', width=2)
+                                ),
+                                hovertemplate=f"<b>{fund_name} Optimal</b><br>" +
+                                            f"Return: {result['expected_return']*100:.2f}%<br>" +
+                                            f"Volatility: {result['expected_volatility']*100:.2f}%<br>" +
+                                            f"Sharpe: {result['sharpe_ratio']:.4f}<extra></extra>"
+                            ))
+                            
+                        except Exception as e:
+                            # If frontier generation fails, just plot the optimal point
+                            fig_frontier_comp.add_trace(go.Scatter(
+                                x=[result['expected_volatility']*100],
+                                y=[result['expected_return']*100],
+                                mode='markers',
+                                name=f'{fund_name} Optimal',
+                                marker=dict(
+                                    color=color,
+                                    size=12,
+                                    symbol='star',
+                                    line=dict(color='white', width=2)
+                                ),
+                                hovertemplate=f"<b>{fund_name} Optimal</b><br>" +
+                                            f"Return: {result['expected_return']*100:.2f}%<br>" +
+                                            f"Volatility: {result['expected_volatility']*100:.2f}%<br>" +
+                                            f"Sharpe: {result['sharpe_ratio']:.4f}<extra></extra>"
+                            ))
                 
-                fig_sharpe_comp.update_layout(
-                    title="Sharpe Ratio Comparison",
-                    xaxis_title="Fund",
-                    yaxis_title="Sharpe Ratio",
+                fig_frontier_comp.update_layout(
+                    title="Cross-Fund Efficient Frontiers",
+                    xaxis_title="Expected Volatility (%)",
+                    yaxis_title="Expected Return (%)",
                     template="plotly_white",
                     height=400,
                     font=dict(family="Ringside", size=12),
-                    title_font=dict(family="Ringside", size=16)
+                    title_font=dict(family="Ringside", size=16),
+                    legend_font=dict(family="Ringside", size=10),
+                    showlegend=True,
+                    legend=dict(
+                        orientation="v",
+                        yanchor="top",
+                        y=1,
+                        xanchor="left",
+                        x=1.02
+                    )
                 )
                 
-                st.plotly_chart(fig_sharpe_comp, use_container_width=True)
+                st.plotly_chart(fig_frontier_comp, use_container_width=True)
             
             # Asset Allocation Comparison
             st.subheader("🎯 Asset Allocation Comparison")
