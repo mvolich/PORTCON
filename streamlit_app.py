@@ -853,6 +853,35 @@ if uploaded_file is not None:
         
         st.plotly_chart(fig_frontier, use_container_width=True)
         
+        # Weights Table
+        st.subheader("📊 Portfolio Weights Table")
+        
+        # Create a weights table showing all portfolios
+        df_weights_display = df_weights.copy()
+        
+        # Convert weights to percentages and round to 2 decimal places
+        df_weights_display = (df_weights_display * 100).round(2)
+        
+        # Filter out assets with zero weights across all portfolios for cleaner display
+        non_zero_assets = df_weights_display[(df_weights_display > 0.01).any(axis=1)].index
+        df_weights_display = df_weights_display.loc[non_zero_assets]
+        
+        # Create a styler for the weights table
+        weights_styler = df_weights_display.style
+        
+        # Format all columns as percentages with 2 decimal places
+        weights_styler = weights_styler.format("{:.2f}%")
+        
+        # Add green borders and bold text to the optimal portfolio column
+        if optimal_portfolio and optimal_portfolio in df_weights_display.columns:
+            weights_styler = weights_styler.set_properties(
+                **{'border-left': '3px solid green', 'border-right': '3px solid green', 'font-weight': 'bold'},
+                subset=[optimal_portfolio]
+            )
+        
+        # Display the weights table
+        st.dataframe(weights_styler, use_container_width=True)
+        
         # Portfolio weights visualization
         st.subheader("Portfolio Composition Across Frontier")
         
