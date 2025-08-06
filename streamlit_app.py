@@ -1008,10 +1008,10 @@ if uploaded_file is not None:
             'Avg Rating': "{}"
         })
         
-        # Add green borders to the optimal portfolio column
+        # Add green borders and bold text to the optimal portfolio column
         if optimal_portfolio and optimal_portfolio in df_metrics_display.columns:
             styler = styler.set_properties(
-                **{'border-left': '3px solid green', 'border-right': '3px solid green'},
+                **{'border-left': '3px solid green', 'border-right': '3px solid green', 'font-weight': 'bold'},
                 subset=[optimal_portfolio]
             )
         
@@ -1114,10 +1114,10 @@ if uploaded_file is not None:
         # 1) Colour cells by usage level
         styled = df_constraint_usage.style.applymap(color_constraint_usage)
         
-        # 2) Add a green border to the optimal‐portfolio column
+        # 2) Add a green border and bold text to the optimal‐portfolio column
         if optimal_portfolio and optimal_portfolio in df_constraint_usage.columns:
             styled = styled.set_properties(
-                **{'border-left': '3px solid green', 'border-right': '3px solid green'},
+                **{'border-left': '3px solid green', 'border-right': '3px solid green', 'font-weight': 'bold'},
                 subset=[optimal_portfolio]
             )
         
