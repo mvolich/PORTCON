@@ -1192,7 +1192,7 @@ if uploaded_file is not None:
                     **{'border-left': '3px solid green', 'border-right': '3px solid green', 'font-weight': 'bold'},
                     subset=[optimal_portfolio]
                 )
-            st.dataframe(weights_styler_local, use_container_width=True)
+            st.table(weights_styler_local)
 
             # Portfolio Metrics table (formatted)
             st.subheader("Portfolio Metrics")
@@ -1225,9 +1225,9 @@ if uploaded_file is not None:
                         **{'border-left': '3px solid green', 'border-right': '3px solid green', 'font-weight': 'bold'},
                         subset=[optimal_portfolio]
                     )
-                st.dataframe(styler_metrics_local, use_container_width=True)
+                st.table(styler_metrics_local)
             else:
-                st.dataframe(df_metrics_display_local, use_container_width=True)
+                st.table(df_metrics_display_local)
 
             # Constraints Budget Usage table
             st.subheader("Constraints Budget Usage")
@@ -1266,7 +1266,31 @@ if uploaded_file is not None:
             df_cu_fmt_local = df_cu_local.copy()
             for c in df_cu_fmt_local.columns:
                 df_cu_fmt_local[c] = df_cu_fmt_local[c].apply(lambda x: '-' if pd.notna(x) and round(float(x), 2) == 0.00 else f"{round(float(x), 2):.2f}%" if pd.notna(x) else x)
-            st.dataframe(df_cu_fmt_local, use_container_width=True)
+            # Apply cell color coding and optimal column highlight, then render with Styler
+            def color_constraint_usage_cell_local(val):
+                if pd.isna(val) or val == '' or val == '-':
+                    return 'background-color: #ccffcc'
+                try:
+                    if isinstance(val, str) and '%' in val:
+                        numeric_val = float(val.replace('%', ''))
+                    else:
+                        numeric_val = float(val)
+                    if numeric_val > 90:
+                        return 'background-color: #ffcccc'
+                    elif numeric_val > 70:
+                        return 'background-color: #ffebcc'
+                    else:
+                        return 'background-color: #ccffcc'
+                except (ValueError, TypeError):
+                    return ''
+
+            cu_styler_local = df_cu_fmt_local.style.applymap(color_constraint_usage_cell_local)
+            if 'Sharpe (Hist Avg)' in df_metrics.index and optimal_portfolio is not None and optimal_portfolio in df_cu_fmt_local.columns:
+                cu_styler_local = cu_styler_local.set_properties(
+                    **{'border-left': '3px solid green', 'border-right': '3px solid green', 'font-weight': 'bold'},
+                    subset=[optimal_portfolio]
+                )
+            st.table(cu_styler_local)
 
             # Optimal portfolio metrics snapshot
             if optimal_portfolio is not None:
