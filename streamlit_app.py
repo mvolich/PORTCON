@@ -1694,7 +1694,7 @@ if uploaded_file is not None:
                         # Keep Sharpe ratio with 4 decimal places (no % symbol)
                         df_metrics_display.loc[row, portfolio] = f"{raw_value:.4f}"
                     
-                elif row == 'Avg Duration':
+                    elif row == 'Avg Duration':
                         # Duration with 2 decimal places (no % symbol)
                         df_metrics_display.loc[row, portfolio] = f"{raw_value:.2f}"
 
@@ -1705,7 +1705,7 @@ if uploaded_file is not None:
                             pct_val = 0.0
                         df_metrics_display.loc[row, portfolio] = f"{pct_val:.2f}%"
                     
-                else:
+                    else:
                         # All other numeric values get % symbol and 2 decimal places
                         df_metrics_display.loc[row, portfolio] = f"{raw_value:.2f}%"
 
@@ -1833,11 +1833,11 @@ if uploaded_file is not None:
                     numeric_val = float(val)
                 
                 if numeric_val > 90:
-                return 'background-color: #ffcccc'  # Red for >90%
+                    return 'background-color: #ffcccc'  # Red for >90%
                 elif numeric_val > 70:
-                return 'background-color: #ffebcc'  # Orange for 70-90%
-            else:
-                return 'background-color: #ccffcc'  # Green for <70%
+                    return 'background-color: #ffebcc'  # Orange for 70-90%
+                else:
+                    return 'background-color: #ccffcc'  # Green for <70%
             except (ValueError, TypeError):
                 return ''
         
