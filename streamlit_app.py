@@ -1124,19 +1124,38 @@ if uploaded_file is not None:
             )
             st.plotly_chart(fig_frontier_local, use_container_width=True)
 
-            # Sharpe ratio line plot
+            # Sharpe ratio line plot: Sharpe vs Volatility
             if 'Sharpe (Hist Avg)' in df_metrics.index:
                 sharpe_vals = [float(df_metrics.loc['Sharpe (Hist Avg)', p]) for p in df_metrics.columns]
                 fig_sharpe_local = go.Figure()
                 fig_sharpe_local.add_trace(go.Scatter(
-                    x=list(df_metrics.columns),
+                    x=risks_list,
                     y=sharpe_vals,
                     mode='lines+markers',
                     name='Sharpe Ratio',
+                    text=list(df_metrics.columns),
+                    hovertemplate='<b>%{text}</b><br>Volatility: %{x:.2%}<br>Sharpe Ratio: %{y:.4f}<extra></extra>',
                     line=dict(color=RUBRICS_COLORS['blue'], width=3),
-                    marker=dict(color=RUBRICS_COLORS['orange'], size=8),
-                    hovertemplate='<b>%{x}</b><br>Sharpe Ratio: %{y:.4f}<extra></extra>'
+                    marker=dict(color=RUBRICS_COLORS['orange'], size=8)
                 ))
+                if 'Sharpe (Hist Avg)' in df_metrics.index and optimal_portfolio is not None:
+                    fig_sharpe_local.add_trace(go.Scatter(
+                        x=[optimal_risk_local],
+                        y=[max_sharpe],
+                        mode='markers',
+                        name='Optimal Portfolio',
+                        marker=dict(color='green', size=15, symbol='star', line=dict(color='white', width=2)),
+                        hovertemplate=f'<b>Optimal Portfolio</b><br>Volatility: {optimal_risk_local:.2%}<br>Sharpe Ratio: {max_sharpe:.4f}<extra></extra>'
+                    ))
+                fig_sharpe_local.update_layout(
+                    title=f"{fund_name} Sharpe Ratio vs Volatility",
+                    xaxis_title="Volatility (Standard Deviation)",
+                    yaxis_title="Sharpe Ratio",
+                    template="plotly_white",
+                    height=400,
+                    font=dict(family="Ringside", size=12),
+                    title_font=dict(family="Ringside", size=16)
+                )
                 st.plotly_chart(fig_sharpe_local, use_container_width=True)
 
             # Portfolio Composition Across Frontier (stacked area per asset)
@@ -1681,55 +1700,42 @@ if uploaded_file is not None:
         
         st.plotly_chart(fig_frontier, use_container_width=True)
         
-        # Sharpe Ratio Line Plot
+        # Sharpe Ratio Line Plot (Sharpe vs Volatility)
         if 'Sharpe (Hist Avg)' in df_metrics.index:
             # Extract Sharpe ratios for all portfolios
             sharpe_values = []
-            portfolio_names = []
-            
             for portfolio in df_metrics.columns:
                 try:
-                    sharpe_val = float(df_metrics.loc['Sharpe (Hist Avg)', portfolio])
-                    sharpe_values.append(sharpe_val)
-                    portfolio_names.append(portfolio)
+                    sharpe_values.append(float(df_metrics.loc['Sharpe (Hist Avg)', portfolio]))
                 except (ValueError, TypeError):
                     sharpe_values.append(0.0)
-                    portfolio_names.append(portfolio)
-            
-            # Create Sharpe ratio line plot
+
+            # Create Sharpe vs Volatility plot
             fig_sharpe = go.Figure()
             fig_sharpe.add_trace(go.Scatter(
-                x=portfolio_names,
+                x=risks_list,
                 y=sharpe_values,
                 mode='lines+markers',
                 name='Sharpe Ratio',
+                hovertemplate='<b>Volatility:</b> %{x:.2%}<br><b>Sharpe:</b> %{y:.4f}<extra></extra>',
                 line=dict(color=RUBRICS_COLORS['blue'], width=3),
-                marker=dict(color=RUBRICS_COLORS['orange'], size=8),
-                hovertemplate='<b>%{x}</b><br>Sharpe Ratio: %{y:.4f}<extra></extra>'
+                marker=dict(color=RUBRICS_COLORS['orange'], size=8)
             ))
-            
+
             # Highlight the optimal portfolio point
-            if optimal_portfolio and optimal_portfolio in portfolio_names:
-                optimal_idx = portfolio_names.index(optimal_portfolio)
-                optimal_sharpe = sharpe_values[optimal_idx]
-                
+            if optimal_portfolio:
                 fig_sharpe.add_trace(go.Scatter(
-                    x=[optimal_portfolio],
-                    y=[optimal_sharpe],
+                    x=[optimal_risk],
+                    y=[max_sharpe],
                     mode='markers',
                     name='Optimal Portfolio',
-                    marker=dict(
-                        color='green',
-                        size=15,
-                        symbol='star',
-                        line=dict(color='white', width=2)
-                    ),
-                    hovertemplate=f'<b>Optimal Portfolio</b><br>Sharpe Ratio: {optimal_sharpe:.4f}<extra></extra>'
+                    marker=dict(color='green', size=15, symbol='star', line=dict(color='white', width=2)),
+                    hovertemplate=f'<b>Optimal Portfolio</b><br>Volatility: {optimal_risk:.2%}<br>Sharpe Ratio: {max_sharpe:.4f}<extra></extra>'
                 ))
-            
+
             fig_sharpe.update_layout(
-                title="Sharpe Ratio Across Portfolios",
-                xaxis_title="Portfolio",
+                title=f"{selected_fund} Sharpe Ratio vs Volatility",
+                xaxis_title="Volatility (Standard Deviation)",
                 yaxis_title="Sharpe Ratio",
                 template="plotly_white",
                 height=400,
@@ -1738,7 +1744,7 @@ if uploaded_file is not None:
                 legend_font=dict(family="Ringside", size=11),
                 showlegend=True
             )
-            
+
             st.plotly_chart(fig_sharpe, use_container_width=True)
         
         # Portfolio weights visualization
