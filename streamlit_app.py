@@ -727,7 +727,94 @@ if uploaded_file is not None:
     }).sort_values(by='Annualised Return (%)', ascending=False)
     
     # Tabs wrapper for CIO view and each fund
-    tab_cio, tab_gfi, tab_gcf, tab_eyf = st.tabs(["🏢 CIO Comparison", "📊 GFI", "📈 GCF", "⚡ EYF"])
+    tab_eda, tab_cio, tab_gfi, tab_gcf, tab_eyf = st.tabs(["🧪 EDA", "🏢 CIO Comparison", "📊 GFI", "📈 GCF", "⚡ EYF"])
+
+    # -----------------
+    # EDA - Tab 0
+    # -----------------
+    with tab_eda:
+        st.header("🧪 Exploratory Data Analysis")
+
+        eda_key = "eda_global_expander"
+        if eda_key not in st.session_state:
+            st.session_state[eda_key] = True
+
+        with st.expander("Exploratory Data Analysis", expanded=st.session_state[eda_key]):
+            st.subheader("Data Processing Workflow")
+
+            c1, c2 = st.columns(2)
+            with c1:
+                st.write("**Raw Data Structure (Index List):**")
+                st.dataframe(df_raw.head(), use_container_width=True)
+            with c2:
+                st.write("**Metadata Structure (Sheet2):**")
+                st.dataframe(df_metadata_raw.head(), use_container_width=True)
+
+            st.write("**Data Processing Steps:**")
+            st.write("1. **Date/Value Column Separation**: Identified date and value columns from raw data")
+            st.write("2. **Common Date Alignment**: Found overlapping dates across all assets")
+            st.write("3. **Data Merging**: Combined all series on common dates")
+            st.write("4. **Return Calculation**: Computed percentage changes")
+            st.write("5. **Metadata Alignment**: Matched asset names with metadata")
+
+            st.write("**Processed Data Summary:**")
+            cc1, cc2, cc3 = st.columns(3)
+            with cc1:
+                st.metric("Assets", len(df_common.columns))
+            with cc2:
+                st.metric("Time Period", f"{len(df_common)} days")
+            with cc3:
+                st.metric("Date Range", f"{df_common.index.min().strftime('%Y-%m-%d')} to {df_common.index.max().strftime('%Y-%m-%d')}")
+
+            # Data coverage
+            first_last_dates = {}
+            for col in df_common.columns:
+                first_date = df_common[col].first_valid_index()
+                last_date = df_common[col].last_valid_index()
+                first_last_dates[col] = {"First Date": first_date.strftime('%Y-%m-%d'), "Last Date": last_date.strftime('%Y-%m-%d')}
+            coverage_df = pd.DataFrame.from_dict(first_last_dates, orient='index')
+            st.dataframe(coverage_df, use_container_width=True)
+
+            st.subheader("Time Series Analysis")
+            fig_pct = go.Figure()
+            for col in df_pct_change.columns:
+                fig_pct.add_trace(go.Scatter(x=df_pct_change.index, y=df_pct_change[col] * 100, mode='lines', name=col,
+                                             hovertemplate='<b>%{fullData.name}</b><br>Date: %{x}<br>Return: %{y:.2f}%<extra></extra>'))
+            fig_pct.update_layout(title="Daily Returns Over Time", xaxis_title="Date", yaxis_title="Daily Return (%)",
+                                  hovermode="closest", height=500, showlegend=True,
+                                  legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                                  font=dict(family="Ringside", size=12), title_font=dict(family="Ringside", size=16), legend_font=dict(family="Ringside", size=11))
+            st.plotly_chart(fig_pct, use_container_width=True)
+
+            # Rebased indices
+            df_rebased = df_common / df_common.iloc[0] * 100
+            fig_rebased = go.Figure()
+            for col in df_rebased.columns:
+                fig_rebased.add_trace(go.Scatter(x=df_rebased.index, y=df_rebased[col], mode='lines', name=col,
+                                                 hovertemplate='<b>%{fullData.name}</b><br>Date: %{x}<br>Value: %{y:.2f}<extra></extra>'))
+            fig_rebased.update_layout(title="Rebased Index Values (Base = 100)", xaxis_title="Date", yaxis_title="Index Value",
+                                      hovermode="closest", height=500, showlegend=True,
+                                      legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                                      font=dict(family="Ringside", size=12), title_font=dict(family="Ringside", size=16), legend_font=dict(family="Ringside", size=11))
+            st.plotly_chart(fig_rebased, use_container_width=True)
+
+            # Distribution analysis
+            st.subheader("Return Distributions")
+            fig_dist = go.Figure()
+            for i, col in enumerate(df_pct_change.columns):
+                fig_dist.add_trace(go.Histogram(x=df_pct_change[col] * 100, name=col, nbinsx=50, opacity=0.7,
+                                                visible=False if i > 0 else True))
+            buttons = []
+            for i, col in enumerate(df_pct_change.columns):
+                visibility = [False] * len(df_pct_change.columns)
+                visibility[i] = True
+                buttons.append(dict(label=col, method="update", args=[{"visible": visibility}]))
+            fig_dist.update_layout(title="Return Distribution by Asset (Use dropdown to switch)", xaxis_title="Daily Return (%)",
+                                   yaxis_title="Frequency", updatemenus=[{"buttons": buttons, "direction": "down", "showactive": True,
+                                                                              "x": 0.1, "xanchor": "left", "y": 1.1, "yanchor": "top",
+                                                                              "font": dict(family="Ringside", size=11)}], height=500,
+                                   font=dict(family="Ringside", size=12), title_font=dict(family="Ringside", size=16))
+            st.plotly_chart(fig_dist, use_container_width=True)
 
     # -----------------
     # CIO View - Tab 1
