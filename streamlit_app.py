@@ -729,19 +729,32 @@ if uploaded_file is not None:
     # Tabs wrapper for CIO view and each fund
     tab_eda, tab_cio, tab_gfi, tab_gcf, tab_eyf = st.tabs(["🧪 EDA", "🏢 CIO Comparison", "📊 GFI", "📈 GCF", "⚡ EYF"])
 
-    # -----------------
-    # EDA - Tab 0
-    # -----------------
-    with tab_eda:
-        st.header("🧪 Exploratory Data Analysis")
+    # Render EDA content (moved into a function to avoid duplication/overlap)
+    def render_eda_content() -> None:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Number of Assets", len(df_pct_change.columns))
+        with col2:
+            st.metric("Time Period", f"{df_pct_change.index.min().date()} to {df_pct_change.index.max().date()}")
+        with col3:
+            st.metric("Trading Days", len(df_pct_change))
 
-        eda_key = "eda_global_expander"
-        if eda_key not in st.session_state:
-            st.session_state[eda_key] = True
+        # Custom expander header to avoid overlap
+        expander_key = "eda_expander"
+        if expander_key not in st.session_state:
+            st.session_state[expander_key] = False
 
-        with st.expander("Exploratory Data Analysis", expanded=st.session_state[eda_key]):
+        col_exp_1, col_exp_2 = st.columns([1, 20])
+        with col_exp_1:
+            if st.button("▶" if not st.session_state[expander_key] else "▼", key="eda_toggle"):
+                st.session_state[expander_key] = not st.session_state[expander_key]
+        with col_exp_2:
+            st.markdown("**Exploratory Data Analysis**")
+
+        if st.session_state[expander_key]:
             st.subheader("Data Processing Workflow")
 
+            # Raw data structures
             c1, c2 = st.columns(2)
             with c1:
                 st.write("**Raw Data Structure (Index List):**")
@@ -750,6 +763,7 @@ if uploaded_file is not None:
                 st.write("**Metadata Structure (Sheet2):**")
                 st.dataframe(df_metadata_raw.head(), use_container_width=True)
 
+            # Steps
             st.write("**Data Processing Steps:**")
             st.write("1. **Date/Value Column Separation**: Identified date and value columns from raw data")
             st.write("2. **Common Date Alignment**: Found overlapping dates across all assets")
@@ -757,6 +771,7 @@ if uploaded_file is not None:
             st.write("4. **Return Calculation**: Computed percentage changes")
             st.write("5. **Metadata Alignment**: Matched asset names with metadata")
 
+            # Processed summary
             st.write("**Processed Data Summary:**")
             cc1, cc2, cc3 = st.columns(3)
             with cc1:
@@ -767,54 +782,164 @@ if uploaded_file is not None:
                 st.metric("Date Range", f"{df_common.index.min().strftime('%Y-%m-%d')} to {df_common.index.max().strftime('%Y-%m-%d')}")
 
             # Data coverage
+            st.write("**Data Coverage Analysis:**")
             first_last_dates = {}
             for col in df_common.columns:
                 first_date = df_common[col].first_valid_index()
                 last_date = df_common[col].last_valid_index()
-                first_last_dates[col] = {"First Date": first_date.strftime('%Y-%m-%d'), "Last Date": last_date.strftime('%Y-%m-%d')}
+                first_last_dates[col] = {'First Date': first_date.strftime('%Y-%m-%d'), 'Last Date': last_date.strftime('%Y-%m-%d')}
             coverage_df = pd.DataFrame.from_dict(first_last_dates, orient='index')
             st.dataframe(coverage_df, use_container_width=True)
 
+            # Time series
             st.subheader("Time Series Analysis")
             fig_pct = go.Figure()
             for col in df_pct_change.columns:
-                fig_pct.add_trace(go.Scatter(x=df_pct_change.index, y=df_pct_change[col] * 100, mode='lines', name=col,
-                                             hovertemplate='<b>%{fullData.name}</b><br>Date: %{x}<br>Return: %{y:.2f}%<extra></extra>'))
-            fig_pct.update_layout(title="Daily Returns Over Time", xaxis_title="Date", yaxis_title="Daily Return (%)",
-                                  hovermode="closest", height=500, showlegend=True,
-                                  legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                                  font=dict(family="Ringside", size=12), title_font=dict(family="Ringside", size=16), legend_font=dict(family="Ringside", size=11))
+                fig_pct.add_trace(go.Scatter(
+                    x=df_pct_change.index,
+                    y=df_pct_change[col] * 100,
+                    mode='lines',
+                    name=col,
+                    hovertemplate='<b>%{fullData.name}</b><br>Date: %{x}<br>Return: %{y:.2f}%<extra></extra>'
+                ))
+            fig_pct.update_layout(
+                title="Daily Returns Over Time",
+                xaxis_title="Date",
+                yaxis_title="Daily Return (%)",
+                hovermode="closest",
+                height=500,
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                font=dict(family="Ringside", size=12),
+                title_font=dict(family="Ringside", size=16),
+                legend_font=dict(family="Ringside", size=11)
+            )
             st.plotly_chart(fig_pct, use_container_width=True)
 
             # Rebased indices
             df_rebased = df_common / df_common.iloc[0] * 100
             fig_rebased = go.Figure()
             for col in df_rebased.columns:
-                fig_rebased.add_trace(go.Scatter(x=df_rebased.index, y=df_rebased[col], mode='lines', name=col,
-                                                 hovertemplate='<b>%{fullData.name}</b><br>Date: %{x}<br>Value: %{y:.2f}<extra></extra>'))
-            fig_rebased.update_layout(title="Rebased Index Values (Base = 100)", xaxis_title="Date", yaxis_title="Index Value",
-                                      hovermode="closest", height=500, showlegend=True,
-                                      legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                                      font=dict(family="Ringside", size=12), title_font=dict(family="Ringside", size=16), legend_font=dict(family="Ringside", size=11))
+                fig_rebased.add_trace(go.Scatter(
+                    x=df_rebased.index,
+                    y=df_rebased[col],
+                    mode='lines',
+                    name=col,
+                    hovertemplate='<b>%{fullData.name}</b><br>Date: %{x}<br>Value: %{y:.2f}<extra></extra>'
+                ))
+            fig_rebased.update_layout(
+                title="Rebased Index Values (Base = 100)",
+                xaxis_title="Date",
+                yaxis_title="Index Value",
+                hovermode="closest",
+                height=500,
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                font=dict(family="Ringside", size=12),
+                title_font=dict(family="Ringside", size=16),
+                legend_font=dict(family="Ringside", size=11)
+            )
             st.plotly_chart(fig_rebased, use_container_width=True)
+
+            # Asset performance summary
+            st.subheader("Asset Performance Summary")
+            performance_summary = pd.DataFrame({
+                'Annualised Return (%)': annualized_returns,
+                'Annualised Volatility (%)': annualized_std,
+                'Sharpe Ratio': (annualized_returns / annualized_std).round(3),
+                'Min Daily Return (%)': (df_pct_change.min() * 100).round(2),
+                'Max Daily Return (%)': (df_pct_change.max() * 100).round(2),
+            }).sort_values(by='Sharpe Ratio', ascending=False)
+            st.dataframe(performance_summary, use_container_width=True)
 
             # Distribution analysis
             st.subheader("Return Distributions")
             fig_dist = go.Figure()
             for i, col in enumerate(df_pct_change.columns):
-                fig_dist.add_trace(go.Histogram(x=df_pct_change[col] * 100, name=col, nbinsx=50, opacity=0.7,
-                                                visible=False if i > 0 else True))
+                fig_dist.add_trace(go.Histogram(
+                    x=df_pct_change[col] * 100,
+                    name=col,
+                    nbinsx=50,
+                    opacity=0.7,
+                    visible=False if i > 0 else True
+                ))
             buttons = []
             for i, col in enumerate(df_pct_change.columns):
                 visibility = [False] * len(df_pct_change.columns)
                 visibility[i] = True
                 buttons.append(dict(label=col, method="update", args=[{"visible": visibility}]))
-            fig_dist.update_layout(title="Return Distribution by Asset (Use dropdown to switch)", xaxis_title="Daily Return (%)",
-                                   yaxis_title="Frequency", updatemenus=[{"buttons": buttons, "direction": "down", "showactive": True,
-                                                                              "x": 0.1, "xanchor": "left", "y": 1.1, "yanchor": "top",
-                                                                              "font": dict(family="Ringside", size=11)}], height=500,
-                                   font=dict(family="Ringside", size=12), title_font=dict(family="Ringside", size=16))
+            fig_dist.update_layout(
+                title="Return Distribution by Asset (Use dropdown to switch)",
+                xaxis_title="Daily Return (%)",
+                yaxis_title="Frequency",
+                updatemenus=[{"buttons": buttons, "direction": "down", "showactive": True,
+                               "x": 0.1, "xanchor": "left", "y": 1.1, "yanchor": "top",
+                               "font": dict(family="Ringside", size=11)}],
+                height=500,
+                font=dict(family="Ringside", size=12),
+                title_font=dict(family="Ringside", size=16)
+            )
             st.plotly_chart(fig_dist, use_container_width=True)
+
+            # Distribution statistics
+            st.write("**Distribution Statistics:**")
+            summary_stats = pd.DataFrame({
+                'Skewness': df_pct_change.skew().round(3),
+                'Kurtosis': df_pct_change.kurtosis().round(3),
+                'VaR (95%)': (df_pct_change.quantile(0.05) * 100).round(2),
+                'CVaR (95%)': (df_pct_change[df_pct_change <= df_pct_change.quantile(0.05)].mean() * 100).round(2)
+            }).sort_values(by='Skewness', key=abs, ascending=False)
+            st.dataframe(summary_stats, use_container_width=True)
+
+            # Correlation matrix
+            st.subheader("🔗 Asset Correlation Matrix")
+            correlation_matrix = df_pct_change.corr()
+            fig_corr = go.Figure(data=go.Heatmap(
+                z=correlation_matrix.values,
+                x=correlation_matrix.columns,
+                y=correlation_matrix.columns,
+                colorscale='RdBu',
+                zmid=0,
+                text=np.round(correlation_matrix.values, 2),
+                texttemplate="%{text}",
+                textfont={"size": 10},
+                hoverongaps=False,
+                hovertemplate='<b>%{y}</b> vs <b>%{x}</b><br>Correlation: %{z:.3f}<extra></extra>'
+            ))
+            fig_corr.update_layout(
+                title="Asset Correlation Matrix",
+                xaxis_title="Assets",
+                yaxis_title="Assets",
+                height=600,
+                font=dict(family="Ringside", size=12),
+                title_font=dict(family="Ringside", size=16),
+                xaxis={'side': 'bottom', 'tickfont': dict(family="Ringside", size=10)},
+                yaxis={'side': 'left', 'tickfont': dict(family="Ringside", size=10)}
+            )
+            st.plotly_chart(fig_corr, use_container_width=True)
+
+            # Insights
+            st.subheader("Key Insights")
+            corr_matrix_no_diag = correlation_matrix.where(~np.eye(correlation_matrix.shape[0], dtype=bool))
+            max_corr = corr_matrix_no_diag.max().max()
+            min_corr = corr_matrix_no_diag.min().min()
+            max_corr_pair = np.where(correlation_matrix == max_corr)
+            min_corr_pair = np.where(correlation_matrix == min_corr)
+            ic1, ic2 = st.columns(2)
+            with ic1:
+                st.write("**Highest Correlation:**")
+                st.write(f"{correlation_matrix.columns[max_corr_pair[1][0]]} vs {correlation_matrix.columns[max_corr_pair[0][0]]}: {max_corr:.3f}")
+            with ic2:
+                st.write("**Lowest Correlation:**")
+                st.write(f"{correlation_matrix.columns[min_corr_pair[1][0]]} vs {correlation_matrix.columns[min_corr_pair[0][0]]}: {min_corr:.3f}")
+
+    # -----------------
+    # EDA - Tab 0
+    # -----------------
+    with tab_eda:
+        st.header("🧪 Exploratory Data Analysis")
+        render_eda_content()
+        # EDA content fully handled in render_eda_content()
 
     # -----------------
     # CIO View - Tab 1
