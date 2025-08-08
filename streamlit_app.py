@@ -300,21 +300,21 @@ with col2:
 
 # Sidebar for file upload and controls
 with st.sidebar:
-    st.header("📁 Data Upload")
+    st.header("Data Upload")
     uploaded_file = st.file_uploader(
         "Upload Excel file with 'Index List' and 'Sheet2' tabs",
         type=['xlsx', 'xls']
     )
     
     if uploaded_file is not None:
-        st.success("✅ File uploaded successfully!")
+        st.success("File uploaded successfully!")
         
         # Load data
         xls = pd.ExcelFile(uploaded_file)
         df_raw = xls.parse('Index List')
         df_metadata_raw = xls.parse('Sheet2')
         
-        st.header("⚙️ Fund Constraints")
+        st.header("Fund Constraints")
         
         # Define rating scale
         rating_scale = {
@@ -727,7 +727,7 @@ if uploaded_file is not None:
     }).sort_values(by='Annualised Return (%)', ascending=False)
     
     # Tabs wrapper for CIO view and each fund
-    tab_eda, tab_cio, tab_gfi, tab_gcf, tab_eyf = st.tabs(["🧪 EDA", "🏢 CIO Comparison", "📊 GFI", "📈 GCF", "⚡ EYF"])
+    tab_eda, tab_cio, tab_gfi, tab_gcf, tab_eyf = st.tabs(["EDA", "CIO Comparison", "GFI", "GCF", "EYF"])
 
     # Render EDA content (moved into a function to avoid duplication/overlap)
     def render_eda_content() -> None:
@@ -746,7 +746,7 @@ if uploaded_file is not None:
 
         col_exp_1, col_exp_2 = st.columns([1, 20])
         with col_exp_1:
-            if st.button("▶" if not st.session_state[expander_key] else "▼", key="eda_toggle"):
+            if st.button(">" if not st.session_state[expander_key] else "v", key="eda_toggle"):
                 st.session_state[expander_key] = not st.session_state[expander_key]
         with col_exp_2:
             st.markdown("**Exploratory Data Analysis**")
@@ -892,7 +892,7 @@ if uploaded_file is not None:
             st.dataframe(summary_stats, use_container_width=True)
 
             # Correlation matrix
-            st.subheader("🔗 Asset Correlation Matrix")
+            st.subheader("Asset Correlation Matrix")
             correlation_matrix = df_pct_change.corr()
             fig_corr = go.Figure(data=go.Heatmap(
                 z=correlation_matrix.values,
@@ -937,7 +937,7 @@ if uploaded_file is not None:
     # EDA - Tab 0
     # -----------------
     with tab_eda:
-        st.header("🧪 Exploratory Data Analysis")
+        st.header("Exploratory Data Analysis")
         render_eda_content()
         # EDA content fully handled in render_eda_content()
 
@@ -945,10 +945,10 @@ if uploaded_file is not None:
     # CIO View - Tab 1
     # -----------------
     with tab_cio:
-        st.header("🏢 CIO View - Fund Comparison")
+        st.header("CIO View - Fund Comparison")
 
         # Run optimization for all funds to get optimal portfolios
-        st.info("📊 Analyzing optimal portfolios across all funds...")
+        st.info("Analyzing optimal portfolios across all funds...")
 
         cio_results = {}
         all_fund_names = list(st.session_state.fund_constraints.keys())
@@ -1005,7 +1005,7 @@ if uploaded_file is not None:
 
         if cio_results:
             # Fund Comparison Overview
-            st.subheader("📈 Optimal Portfolio Comparison")
+            st.subheader("Optimal Portfolio Comparison")
         
         # Create comparison metrics dataframe
         comparison_data = []
@@ -1183,7 +1183,7 @@ if uploaded_file is not None:
     # Step 1 placeholders: fund tabs (we'll move full analyses in the next step)
     # Reusable renderer for a fund's full analysis (adapted from the existing single-fund view)
     def render_fund_analysis(fund_name: str) -> None:
-        st.header(f"🔍 {fund_name} Fund Analysis")
+        st.header(f"{fund_name} Fund Analysis")
         st.info(f"Detailed analysis for: **{fund_name}**")
 
         # Optimization for this fund
@@ -1192,7 +1192,7 @@ if uploaded_file is not None:
                 returns_list, risks_list, df_metrics, df_weights = generate_efficient_frontier(
                     fund_name, df_pct_change, df_metadata, st.session_state.fund_constraints[fund_name], rf_rate_hist
                 )
-            st.success("✅ Optimization completed successfully!")
+            st.success("Optimization completed successfully!")
 
             # Determine optimal portfolio for marking
             optimal_portfolio = None
@@ -1463,7 +1463,7 @@ if uploaded_file is not None:
     st.stop()
 
     # Individual Fund Analysis
-    st.header("🔍 Individual Fund Analysis")
+    st.header("Individual Fund Analysis")
     st.info(f"Detailed analysis for: **{selected_fund}**")
     
     # Main analysis section
@@ -1487,7 +1487,7 @@ if uploaded_file is not None:
     # Custom expander header
     col1, col2 = st.columns([1, 20])
     with col1:
-        if st.button("▶" if not st.session_state[expander_key] else "▼", key="eda_toggle"):
+        if st.button(">" if not st.session_state[expander_key] else "v", key="eda_toggle"):
             st.session_state[expander_key] = not st.session_state[expander_key]
     with col2:
         st.markdown("**Exploratory Data Analysis**")
@@ -1660,9 +1660,9 @@ if uploaded_file is not None:
             'CVaR (95%)': (df_pct_change[df_pct_change <= df_pct_change.quantile(0.05)].mean() * 100).round(2)
         }).sort_values(by='Skewness', key=abs, ascending=False)
         st.dataframe(summary_stats, use_container_width=True)
-        
-        st.subheader("🔗 Asset Correlation Matrix")
-        
+
+        st.subheader("Asset Correlation Matrix")
+
         # Interactive correlation matrix
         correlation_matrix = df_pct_change.corr()
         
@@ -1739,7 +1739,7 @@ if uploaded_file is not None:
                 selected_fund, df_pct_change, df_metadata, 
                 st.session_state.fund_constraints[selected_fund], rf_rate_hist
             )
-        st.success("✅ Optimization completed successfully!")
+        st.success("Optimization completed successfully!")
         
         # Efficient frontier plot
         st.subheader("Efficient Frontier")
