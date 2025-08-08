@@ -1139,12 +1139,60 @@ if uploaded_file is not None:
                 ))
                 st.plotly_chart(fig_sharpe_local, use_container_width=True)
 
+            # Portfolio Composition Across Frontier (stacked area per asset)
+            st.subheader("Portfolio Composition Across Frontier")
+            df_pct_local = df_weights * 100
+            df_pct_local = df_pct_local.div(df_pct_local.sum(axis=0), axis=1) * 100
+            fig_weights_local = go.Figure()
+            palette_local = [RUBRICS_COLORS['blue'], RUBRICS_COLORS['medium_blue'], RUBRICS_COLORS['light_blue'], RUBRICS_COLORS['grey'], RUBRICS_COLORS['orange']]
+            for i, asset in enumerate(df_pct_local.index):
+                color = palette_local[i % len(palette_local)]
+                fig_weights_local.add_trace(
+                    go.Scatter(
+                        x=df_pct_local.columns,
+                        y=df_pct_local.loc[asset],
+                        mode='lines+markers',
+                        stackgroup='one',
+                        name=asset,
+                        line=dict(color=color),
+                        marker=dict(color=color),
+                        hovertemplate="<b>Asset:</b> %{fullData.name}<br><b>Portfolio:</b> %{x}<br><b>Weight:</b> %{y:.2f}%"
+                    )
+                )
+            if 'Sharpe (Hist Avg)' in df_metrics.index and optimal_portfolio is not None:
+                fig_weights_local.add_shape(
+                    type="line", xref="x", yref="paper", x0=optimal_portfolio, x1=optimal_portfolio, y0=0, y1=1,
+                    line=dict(color="white", width=3, dash="dash")
+                )
+                fig_weights_local.add_annotation(
+                    x=optimal_portfolio, y=1.02, xref="x", yref="paper", text="Optimal Portfolio", showarrow=False, yanchor="bottom",
+                    font=dict(color="white")
+                )
+            fig_weights_local.update_layout(
+                title=f"{fund_name} Portfolio Composition",
+                xaxis_title="Portfolios Along Efficient Frontier",
+                yaxis_title="Weight (%)",
+                yaxis=dict(range=[0, 100]),
+                template="plotly_white",
+                height=500,
+                font=dict(family="Ringside", size=12),
+                title_font=dict(family="Ringside", size=16)
+            )
+            st.plotly_chart(fig_weights_local, use_container_width=True)
+
             # Weights table
             st.subheader("Portfolio Weights Table")
             df_weights_display_local = (df_weights * 100).round(2)
             non_zero_assets_local = df_weights_display_local[(df_weights_display_local > 0.01).any(axis=1)].index
             df_weights_display_local = df_weights_display_local.loc[non_zero_assets_local]
-            st.dataframe(df_weights_display_local, use_container_width=True)
+            # Style and bold the optimal portfolio column
+            weights_styler_local = df_weights_display_local.style.format("{:.2f}%")
+            if 'Sharpe (Hist Avg)' in df_metrics.index and optimal_portfolio is not None and optimal_portfolio in df_weights_display_local.columns:
+                weights_styler_local = weights_styler_local.set_properties(
+                    **{'border-left': '3px solid green', 'border-right': '3px solid green', 'font-weight': 'bold'},
+                    subset=[optimal_portfolio]
+                )
+            st.dataframe(weights_styler_local, use_container_width=True)
 
             # Portfolio Metrics table (formatted)
             st.subheader("Portfolio Metrics")
@@ -1169,7 +1217,17 @@ if uploaded_file is not None:
                             df_metrics_display_local.loc[row, p] = f"{val:.2f}%"
                     except Exception:
                         df_metrics_display_local.loc[row, p] = "0.00%"
-            st.dataframe(df_metrics_display_local, use_container_width=True)
+            # Bold the optimal portfolio column in metrics
+            if 'Sharpe (Hist Avg)' in df_metrics.index and optimal_portfolio is not None:
+                styler_metrics_local = df_metrics_display_local.style
+                if optimal_portfolio in df_metrics_display_local.columns:
+                    styler_metrics_local = styler_metrics_local.set_properties(
+                        **{'border-left': '3px solid green', 'border-right': '3px solid green', 'font-weight': 'bold'},
+                        subset=[optimal_portfolio]
+                    )
+                st.dataframe(styler_metrics_local, use_container_width=True)
+            else:
+                st.dataframe(df_metrics_display_local, use_container_width=True)
 
             # Constraints Budget Usage table
             st.subheader("Constraints Budget Usage")
